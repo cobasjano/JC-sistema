@@ -141,7 +141,7 @@ export default function AdminDashboardPage() {
     setPosStats(posDataArray);
 
     try {
-      const expensesResponse = await fetch('/api/egresos');
+      const expensesResponse = await fetch('/api/expenses');
       if (expensesResponse.ok) {
         const expenses = await expensesResponse.json();
         const total = Array.isArray(expenses) ? expenses.reduce((sum, exp) => sum + (exp.total || 0), 0) : 0;
@@ -380,7 +380,7 @@ export default function AdminDashboardPage() {
                     {(() => {
                       const flow = predictionService.getTouristFlow();
                       if (flow === 'arrival') return '🟢 Ingreso de Turistas';
-                      if (flow === 'departure') return '🔴 Egreso de Turistas';
+                      if (flow === 'departure') return '🔴 Salida de Turistas';
                       if (flow === 'high' || flow === 'medium') return '🔵 Fin de Semana / Flujo Alto';
                       return '⚪ Flujo Estándar';
                     })()}
@@ -513,7 +513,7 @@ export default function AdminDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <StatCard title="Ticket Promedio" value={`$${averageTicket.toFixed(2)}`} icon="🎟️" color="bg-amber-50 text-amber-600 border-amber-100" />
               <StatCard title="Items Vendidos" value={filteredStats.total_items_sold} icon="📦" color="bg-purple-50 text-purple-600 border-purple-100" />
-              <StatCard title="Total Egresos" value={`$${totalExpenses.toLocaleString()}`} icon="📉" color="bg-rose-50 text-rose-600 border-rose-100" />
+              <StatCard title="Total Gastos" value={`$${totalExpenses.toLocaleString()}`} icon="📉" color="bg-rose-50 text-rose-600 border-rose-100" />
             </div>
 
             {/* Daily Sales Chart (Last 200 Days) */}

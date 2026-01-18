@@ -1,6 +1,6 @@
-const testEgreso = async () => {
+const testExpense = async () => {
   try {
-    const response = await fetch('http://localhost:3000/api/egresos', {
+    const response = await fetch('http://localhost:3000/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -30,4 +30,4 @@ const testEgreso = async () => {
   }
 };
 
-testEgreso();
+testExpense();

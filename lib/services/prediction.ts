@@ -79,7 +79,7 @@ export const predictionService = {
     if (flow === 'arrival') {
       tip = 'Llegada de turistas: Incrementar disponibilidad operativa y personal.';
     } else if (flow === 'departure') {
-      tip = 'Egreso de turistas: Optimizar recursos para menor flujo esperado.';
+      tip = 'Salida de turistas: Optimizar recursos para menor flujo esperado.';
     } else if (weather === 'sunny' && (flow === 'high' || flow === 'medium')) {
       tip = 'Condiciones óptimas: Alta demanda proyectada.';
     } else if (weather === 'rainy') {

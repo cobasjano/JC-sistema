@@ -70,7 +70,7 @@ export default function EditExpensePage() {
 
   const fetchExpense = async () => {
     try {
-      const response = await fetch(`/api/egresos/${expenseId}`);
+      const response = await fetch(`/api/expenses/${expenseId}`);
       if (response.ok) {
         const data: Expense = await response.json();
         setExpense(data);
@@ -93,11 +93,11 @@ export default function EditExpensePage() {
           setSimpleExpenseDescription(data.items[0]?.description || '');
         }
       } else {
-        setError('No se pudo cargar el egreso');
+        setError('No se pudo cargar el gasto');
       }
     } catch (err) {
       console.error('Error fetching expense:', err);
-      setError('Error al cargar el egreso');
+      setError('Error al cargar el gasto');
     } finally {
       setLoading(false);
     }
@@ -254,7 +254,7 @@ export default function EditExpensePage() {
 
       console.log('Update payload:', updatePayload);
 
-      const response = await fetch(`/api/egresos/${expenseId}`, {
+      const response = await fetch(`/api/expenses/${expenseId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatePayload),
@@ -263,16 +263,16 @@ export default function EditExpensePage() {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess('Egreso actualizado correctamente');
+        setSuccess('Gasto actualizado correctamente');
         setTimeout(() => {
-          router.push('/admin/egresos');
+          router.push('/admin/expenses');
         }, 2000);
       } else {
-        setError(data.error || 'Error al actualizar el egreso');
+        setError(data.error || 'Error al actualizar el gasto');
       }
     } catch (err) {
       console.error('Error updating expense:', err);
-      setError('Error al actualizar el egreso');
+      setError('Error al actualizar el gasto');
     } finally {
       setSubmitting(false);
     }
@@ -287,7 +287,7 @@ export default function EditExpensePage() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <Navbar />
         <div className="max-w-2xl mx-auto p-6">
-          <div className="text-center text-gray-600 dark:text-gray-400">Cargando egreso...</div>
+          <div className="text-center text-gray-600 dark:text-gray-400">Cargando gasto...</div>
         </div>
       </div>
     );
@@ -299,13 +299,13 @@ export default function EditExpensePage() {
         <Navbar />
         <div className="max-w-2xl mx-auto p-6">
           <div className="bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 p-4 rounded-lg">
-            Egreso no encontrado
+            Gasto no encontrado
           </div>
           <button
-            onClick={() => router.push('/admin/egresos')}
+            onClick={() => router.push('/admin/expenses')}
             className="mt-4 bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-semibold transition"
           >
-            Volver a Egresos
+            Volver a Gastos
           </button>
         </div>
       </div>
@@ -317,9 +317,9 @@ export default function EditExpensePage() {
       <Navbar />
       <div className="max-w-4xl mx-auto p-3 sm:p-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Editar Egreso</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Editar Gasto</h1>
           <button
-            onClick={() => router.push('/admin/egresos')}
+            onClick={() => router.push('/admin/expenses')}
             className="text-orange-500 hover:text-orange-600 font-semibold"
           >
             ← Volver
@@ -664,7 +664,7 @@ export default function EditExpensePage() {
             </button>
             <button
               type="button"
-              onClick={() => router.push('/admin/egresos')}
+              onClick={() => router.push('/admin/expenses')}
               className="px-8 bg-gray-500 text-white py-4 rounded-xl font-bold text-lg hover:bg-gray-600 transition"
             >
               Cancelar

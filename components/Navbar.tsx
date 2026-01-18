@@ -57,7 +57,7 @@ export function Navbar() {
         { href: '/admin/dashboard', label: 'Dashboard' },
         { href: '/admin/sales', label: 'Ventas' },
         { href: '/admin/products', label: 'Productos' },
-        { href: '/admin/egresos', label: 'Gastos' }
+        { href: '/admin/expenses', label: 'Gastos' }
       ]
     : [
         { href: '/pos/catalog', label: 'Catálogo' },

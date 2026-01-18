@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     console.log('Insertando:', JSON.stringify(insertData));
 
     const { data, error } = await supabaseAdmin
-      .from('egresos')
+      .from('expenses')
       .insert([insertData])
       .select()
       .single();
@@ -119,20 +119,20 @@ export async function POST(request: NextRequest) {
       console.error('Supabase error:', error);
       
       // Error de restricción de categoría (check constraint)
-      if (error.message.includes('egresos_category_check')) {
+      if (error.message.includes('expenses_category_check') || error.message.includes('gastos_category_check')) {
         return NextResponse.json(
-          { error: 'Error: La base de datos no reconoce la categoría seleccionada. Por favor, asegúrese de haber ejecutado el script de migración SQL para actualizar las categorías de egresos.' },
+          { error: 'Error: La base de datos no reconoce la categoría seleccionada. Por favor, asegúrese de haber ejecutado el script de migración SQL para actualizar las categorías de gastos.' },
           { status: 500 }
         );
       }
 
       return NextResponse.json(
-        { error: `Error al registrar el egreso: ${error.message}` },
+        { error: `Error al registrar el gasto: ${error.message}` },
         { status: 500 }
       );
     }
 
-    console.log('Egreso registrado exitosamente:', data.id);
+    console.log('Gasto registrado exitosamente:', data.id);
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error('POST error:', error);
@@ -154,14 +154,14 @@ export async function GET(request: NextRequest) {
 
     if (id) {
       const { data, error } = await supabaseAdmin
-        .from('egresos')
+        .from('expenses')
         .select('*')
         .eq('id', id)
         .single();
 
       if (error) {
         return NextResponse.json(
-          { error: 'Egreso no encontrado' },
+          { error: 'Gasto no encontrado' },
           { status: 404 }
         );
       }
@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data);
     }
 
-    let query = supabaseAdmin.from('egresos').select('*');
+    let query = supabaseAdmin.from('expenses').select('*');
 
     if (status) {
       query = query.eq('status', status);
@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       return NextResponse.json(
-        { error: 'Error al obtener egresos' },
+        { error: 'Error al obtener gastos' },
         { status: 500 }
       );
     }
@@ -209,20 +209,20 @@ export async function DELETE(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json(
-        { error: 'ID de egreso no proporcionado' },
+        { error: 'ID de gasto no proporcionado' },
         { status: 400 }
       );
     }
 
     const { error } = await supabaseAdmin
-      .from('egresos')
+      .from('expenses')
       .delete()
       .eq('id', id);
 
     if (error) {
       console.error('Supabase delete error:', error);
       return NextResponse.json(
-        { error: 'Error al eliminar el egreso' },
+        { error: 'Error al eliminar el gasto' },
         { status: 500 }
       );
     }
@@ -244,7 +244,7 @@ export async function PATCH(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json(
-        { error: 'ID de egreso no proporcionado' },
+        { error: 'ID de gasto no proporcionado' },
         { status: 400 }
       );
     }
@@ -267,7 +267,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const { data, error } = await supabaseAdmin
-      .from('egresos')
+      .from('expenses')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -276,7 +276,7 @@ export async function PATCH(request: NextRequest) {
     if (error) {
       console.error('Supabase update error:', error);
       return NextResponse.json(
-        { error: 'Error al actualizar el egreso' },
+        { error: 'Error al actualizar el gasto' },
         { status: 500 }
       );
     }

@@ -69,11 +69,13 @@ export const salesService = {
         .single();
 
       if (error) {
+        console.error('Error in createSale:', error);
         return null;
       }
 
       return data;
-    } catch {
+    } catch (error) {
+      console.error('Unexpected error in createSale:', error);
       return null;
     }
   },

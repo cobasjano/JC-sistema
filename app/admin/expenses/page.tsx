@@ -43,7 +43,7 @@ export default function ExpensesPage() {
       if (filterCategory) params.append('category', filterCategory);
       if (filterPos) params.append('posNumber', filterPos);
 
-      const response = await fetch(`/api/egresos?${params.toString()}`);
+      const response = await fetch(`/api/expenses?${params.toString()}`);
       const data = await response.json();
       setExpenses(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -57,7 +57,7 @@ export default function ExpensesPage() {
   const handleStatusUpdate = async (expenseId: string, newStatus: string) => {
     setUpdatingId(expenseId);
     try {
-      const response = await fetch(`/api/egresos/${expenseId}`, {
+      const response = await fetch(`/api/expenses/${expenseId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -78,13 +78,13 @@ export default function ExpensesPage() {
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este egreso?')) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
       return;
     }
 
     setUpdatingId(expenseId);
     try {
-      const response = await fetch(`/api/egresos/${expenseId}`, {
+      const response = await fetch(`/api/expenses/${expenseId}`, {
         method: 'DELETE',
       });
 
@@ -92,11 +92,11 @@ export default function ExpensesPage() {
         setExpenses(expenses.filter((exp) => exp.id !== expenseId));
         setExpandedId(null);
       } else {
-        alert('Error al eliminar el egreso');
+        alert('Error al eliminar el gasto');
       }
     } catch (error) {
       console.error('Error deleting expense:', error);
-      alert('Error al eliminar el egreso');
+      alert('Error al eliminar el gasto');
     } finally {
       setUpdatingId(null);
     }
@@ -117,7 +117,7 @@ export default function ExpensesPage() {
         newPaymentStatus = 'paid';
       }
 
-      const response = await fetch(`/api/egresos/${expenseId}`, {
+      const response = await fetch(`/api/expenses/${expenseId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -225,7 +225,7 @@ export default function ExpensesPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Compras</h1>
           <Link
-            href="/admin/egresos/crear"
+            href="/admin/expenses/crear"
             className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold transition"
           >
             + Nueva Compra
@@ -274,7 +274,7 @@ export default function ExpensesPage() {
           </select>
         </div>
 
-        {/* Lista de Egresos */}
+        {/* Lista de Gastos */}
         {loading ? (
           <div className="text-center py-12 text-gray-900 dark:text-gray-100">Cargando compras...</div>
         ) : expenses.length === 0 ? (
@@ -423,7 +423,7 @@ export default function ExpensesPage() {
                     {/* Acciones de Gestión */}
                     <div className="flex gap-2">
                       <button
-                        onClick={() => router.push(`/admin/egresos/${expense.id}/editar`)}
+                        onClick={() => router.push(`/admin/expenses/${expense.id}/editar`)}
                         disabled={updatingId === expense.id}
                         className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-semibold transition text-sm"
                       >

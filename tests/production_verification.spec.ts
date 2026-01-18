@@ -63,7 +63,7 @@ test.describe('Producción: Clima, Recambio y WhatsApp', () => {
     const isRecambioDay = [1, 7, 8, 14, 15, 21, 22, 30, 31].includes(today);
     
     if (isRecambioDay) {
-        await expect(page.locator('text=Ingreso de Turistas').or(page.locator('text=Egreso de Turistas'))).toBeVisible();
+        await expect(page.locator('text=Ingreso de Turistas').or(page.locator('text=Salida de Turistas'))).toBeVisible();
     } else {
         await expect(page.locator('text=Flujo Estándar')).toBeVisible();
     }

@@ -5,14 +5,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
   try {
     const { data, error } = await supabaseAdmin
-      .from('egresos')
+      .from('expenses')
       .select('*')
       .eq('id', id)
       .single();
 
     if (error) {
       return NextResponse.json(
-        { error: 'Egreso no encontrado' },
+        { error: 'Gasto no encontrado' },
         { status: 404 }
       );
     }
@@ -76,7 +76,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     console.log('Update data to save:', JSON.stringify(updateData));
 
     const { data, error } = await supabaseAdmin
-      .from('egresos')
+      .from('expenses')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -106,14 +106,14 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const { id } = await params;
   try {
     const { error } = await supabaseAdmin
-      .from('egresos')
+      .from('expenses')
       .delete()
       .eq('id', id);
 
     if (error) {
       console.error('Supabase delete error:', error);
       return NextResponse.json(
-        { error: 'Error al eliminar el egreso' },
+        { error: 'Error al eliminar el gasto' },
         { status: 500 }
       );
     }

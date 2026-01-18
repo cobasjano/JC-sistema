@@ -269,7 +269,7 @@ export default function CreateExpensePage() {
         };
       }
 
-      const response = await fetch('/api/egresos', {
+      const response = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -278,16 +278,16 @@ export default function CreateExpensePage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Error al registrar el egreso');
+        setError(data.error || 'Error al registrar el gasto');
         return;
       }
 
-      setSuccess('Egreso registrado correctamente');
+      setSuccess('Gasto registrado correctamente');
       setTimeout(() => {
-        router.push('/admin/egresos');
+        router.push('/admin/expenses');
       }, 2000);
     } catch (err) {
-      setError('Error al registrar el egreso');
+      setError('Error al registrar el gasto');
       console.error(err);
     } finally {
       setLoading(false);

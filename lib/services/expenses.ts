@@ -14,7 +14,7 @@ export const expenseService = {
   ): Promise<Expense | null> {
     try {
       const { data, error } = await supabaseAdmin
-        .from('egresos')
+        .from('expenses')
         .insert([
           {
             created_by: createdBy,
@@ -46,7 +46,7 @@ export const expenseService = {
   async getExpenseById(expenseId: string): Promise<Expense | null> {
     try {
       const { data, error } = await supabase
-        .from('egresos')
+        .from('expenses')
         .select('*')
         .eq('id', expenseId)
         .single();
@@ -64,7 +64,7 @@ export const expenseService = {
   async getExpensesByAdmin(limit = 100): Promise<Expense[]> {
     try {
       const { data, error } = await supabase
-        .from('egresos')
+        .from('expenses')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(limit);
@@ -82,7 +82,7 @@ export const expenseService = {
   async getExpensesByPos(posNumber: number, limit = 100): Promise<Expense[]> {
     try {
       const { data, error } = await supabase
-        .from('egresos')
+        .from('expenses')
         .select('*')
         .eq('pos_number', posNumber)
         .order('created_at', { ascending: false })
@@ -101,7 +101,7 @@ export const expenseService = {
   async getExpensesByCategory(category: ExpenseCategory, limit = 100): Promise<Expense[]> {
     try {
       const { data, error } = await supabase
-        .from('egresos')
+        .from('expenses')
         .select('*')
         .eq('category', category)
         .order('created_at', { ascending: false })
@@ -120,7 +120,7 @@ export const expenseService = {
   async getExpensesByStatus(status: 'pendiente' | 'aprobado' | 'rechazado', limit = 100): Promise<Expense[]> {
     try {
       const { data, error } = await supabase
-        .from('egresos')
+        .from('expenses')
         .select('*')
         .eq('status', status)
         .order('created_at', { ascending: false })
@@ -142,7 +142,7 @@ export const expenseService = {
   ): Promise<Expense | null> {
     try {
       const { data, error } = await supabaseAdmin
-        .from('egresos')
+        .from('expenses')
         .update({ status, updated_at: new Date().toISOString() })
         .eq('id', expenseId)
         .select()
@@ -161,7 +161,7 @@ export const expenseService = {
   async getTotalExpensesByCategory(): Promise<Record<ExpenseCategory, number>> {
     try {
       const { data, error } = await supabase
-        .from('egresos')
+        .from('expenses')
         .select('category, total')
         .eq('status', 'aprobado');
 
@@ -211,7 +211,7 @@ export const expenseService = {
   async getTotalExpensesByPos(): Promise<Record<number, number>> {
     try {
       const { data, error } = await supabase
-        .from('egresos')
+        .from('expenses')
         .select('pos_number, total')
         .eq('status', 'aprobado')
         .not('pos_number', 'is', null);
@@ -237,7 +237,7 @@ export const expenseService = {
   async getTotalExpenses(): Promise<number> {
     try {
       const { data, error } = await supabase
-        .from('egresos')
+        .from('expenses')
         .select('total')
         .eq('status', 'aprobado');
 
