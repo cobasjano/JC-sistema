@@ -19,10 +19,18 @@ export function OfflineSync() {
     for (const sale of pendingSales) {
       try {
         // Use current user's ID to avoid foreign key conflicts if IDs changed after database reset
+        const mappedItems: SaleItem[] = sale.items.map(item => ({
+          product_id: item.product_id,
+          product_name: item.product_name,
+          quantity: item.quantity,
+          unit_price: item.price,
+          subtotal: item.price * item.quantity
+        }));
+
         const result = await salesService.createSale(
           user.id,
           user.pos_number || sale.posNumber,
-          sale.items as SaleItem[],
+          mappedItems,
           sale.total,
           (sale.paymentMethod as PaymentMethod) || undefined,
           sale.paymentBreakdown
