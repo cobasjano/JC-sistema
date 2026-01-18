@@ -1,13 +1,46 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useOfflineStore } from '@/lib/store';
+import { useEffect, useState, useCallback } from 'react';
+import { useOfflineStore, useAuthStore } from '@/lib/store';
 import { salesService } from '@/lib/services/sales';
+import { SaleItem, PaymentMethod } from '@/lib/types';
 
 export function OfflineSync() {
   const { pendingSales, removePendingSale } = useOfflineStore();
+  const { user } = useAuthStore();
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  const syncSales = useCallback(async () => {
+    if (!user || isSyncing) return;
+    setIsSyncing(true);
+    
+    // Process one by one to avoid overwhelming or conflicting
+    for (const sale of pendingSales) {
+      try {
+        // Use current user's ID to avoid foreign key conflicts if IDs changed after database reset
+        const result = await salesService.createSale(
+          user.id,
+          user.pos_number || sale.posNumber,
+          sale.items as SaleItem[],
+          sale.total,
+          (sale.paymentMethod as PaymentMethod) || undefined,
+          sale.paymentBreakdown
+        );
+
+        if (result) {
+          removePendingSale(sale.id);
+        } else {
+            console.error('Sale creation returned null. Possible conflict.');
+        }
+      } catch (error) {
+        console.error('Failed to sync sale:', error);
+        break;
+      }
+    }
+
+    setIsSyncing(false);
+  }, [user, pendingSales, isSyncing, removePendingSale]);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -16,8 +49,6 @@ export function OfflineSync() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    setIsOnline(navigator.onLine);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -25,38 +56,13 @@ export function OfflineSync() {
   }, []);
 
   useEffect(() => {
-    if (isOnline && pendingSales.length > 0 && !isSyncing) {
-      syncSales();
+    if (isOnline && pendingSales.length > 0 && !isSyncing && user) {
+      const timer = setTimeout(() => {
+        syncSales();
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [isOnline, pendingSales, isSyncing]);
-
-  const syncSales = async () => {
-    setIsSyncing(true);
-    
-    // Process one by one to avoid overwhelming or conflicting
-    for (const sale of pendingSales) {
-      try {
-        const result = await salesService.createSale(
-          sale.posId,
-          sale.posNumber,
-          sale.items as any,
-          sale.total,
-          sale.paymentMethod as any,
-          sale.paymentBreakdown
-        );
-
-        if (result) {
-          removePendingSale(sale.id);
-        }
-      } catch (error) {
-        console.error('Failed to sync sale:', error);
-        // Stop syncing if we hit an error to try later
-        break;
-      }
-    }
-
-    setIsSyncing(false);
-  };
+  }, [isOnline, pendingSales.length, isSyncing, user, syncSales]);
 
   if (pendingSales.length === 0) return null;
 
