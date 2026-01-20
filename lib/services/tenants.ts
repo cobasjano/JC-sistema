@@ -104,5 +104,31 @@ export const tenantService = {
       console.error('Error updating tenant settings:', error);
       return false;
     }
+  },
+
+  async updateTenant(id: string, updates: Partial<Tenant>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('tenants')
+        .update(updates)
+        .eq('id', id);
+      return !error;
+    } catch (error) {
+      console.error('Error updating tenant:', error);
+      return false;
+    }
+  },
+
+  async deleteTenant(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('tenants')
+        .delete()
+        .eq('id', id);
+      return !error;
+    } catch (error) {
+      console.error('Error deleting tenant:', error);
+      return false;
+    }
   }
 };

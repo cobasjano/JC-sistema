@@ -7,6 +7,7 @@ import { useAuthStore } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import { Tenant, User } from '@/lib/types';
 import { authService } from '@/lib/services/auth';
+import { tenantService } from '@/lib/services/tenants';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
@@ -14,8 +15,9 @@ export default function SuperAdminDashboard() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddTenant, setShowAddTenant] = useState(false);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   
-  // New Tenant Form
+  // New/Edit Tenant Form
   const [tenantName, setTenantName] = useState('');
   const [tenantSlug, setTenantSlug] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
@@ -87,6 +89,47 @@ export default function SuperAdminDashboard() {
       setError(err.message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateTenant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTenant) return;
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const success = await tenantService.updateTenant(editingTenant.id, {
+        name: tenantName,
+        slug: tenantSlug,
+      });
+
+      if (!success) throw new Error('Error al actualizar el comercio');
+
+      setEditingTenant(null);
+      setTenantName('');
+      setTenantSlug('');
+      fetchTenants();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteTenant = async (id: string) => {
+    if (!confirm('¿Estás seguro de eliminar este comercio? Se borrarán todos sus datos.')) return;
+    
+    try {
+      const success = await tenantService.deleteTenant(id);
+      if (success) {
+        fetchTenants();
+      } else {
+        alert('Error al eliminar el comercio');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error inesperado');
     }
   };
 
@@ -181,6 +224,57 @@ export default function SuperAdminDashboard() {
           </div>
         )}
 
+        {editingTenant && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 w-full max-w-md shadow-2xl border border-white/10">
+              <h2 className="text-2xl font-bold mb-6 tracking-tight">Editar Comercio</h2>
+              <form onSubmit={handleUpdateTenant} className="space-y-5">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">Nombre del Comercio</label>
+                  <input
+                    type="text"
+                    value={tenantName}
+                    onChange={(e) => {
+                      setTenantName(e.target.value);
+                      setTenantSlug(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+                    }}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                    placeholder="Ej: Juguetería Central"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">Slug (URL)</label>
+                  <input
+                    type="text"
+                    value={tenantSlug}
+                    onChange={(e) => setTenantSlug(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-400 text-xs"
+                    required
+                  />
+                </div>
+                {error && <p className="text-red-500 text-xs font-bold text-center bg-red-50 p-3 rounded-lg">{error}</p>}
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setEditingTenant(null)}
+                    className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 py-3 rounded-xl font-bold transition hover:bg-gray-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-bold transition disabled:opacity-50 shadow-lg shadow-orange-500/20"
+                  >
+                    {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-500 border-t-transparent"></div>
@@ -193,7 +287,26 @@ export default function SuperAdminDashboard() {
                   <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center text-xl">
                     🏢
                   </div>
-                  <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-1 rounded-lg uppercase tracking-wider">Activo</span>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        setEditingTenant(tenant);
+                        setTenantName(tenant.name);
+                        setTenantSlug(tenant.slug);
+                      }}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-400 hover:text-orange-500"
+                      title="Editar"
+                    >
+                      ✏️
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteTenant(tenant.id)}
+                      className="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors text-gray-400 hover:text-red-500"
+                      title="Eliminar"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{tenant.name}</h3>
                 <p className="text-xs text-gray-400 font-mono mb-4">slug: {tenant.slug}</p>

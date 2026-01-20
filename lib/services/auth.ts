@@ -127,4 +127,41 @@ export const authService = {
       return false;
     }
   },
+
+  async updateUser(id: string, updates: any): Promise<boolean> {
+    try {
+      if (updates.password) {
+        updates.password_hash = crypto.createHash('sha256').update(updates.password).digest('hex');
+        delete updates.password;
+      }
+      const { error } = await supabase.from('users').update(updates).eq('id', id);
+      return !error;
+    } catch {
+      return false;
+    }
+  },
+
+  async deleteUser(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase.from('users').delete().eq('id', id);
+      return !error;
+    } catch {
+      return false;
+    }
+  },
+
+  async getUsersByTenant(tenantId: string): Promise<User[]> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('role', { ascending: true });
+      
+      if (error) return [];
+      return data || [];
+    } catch {
+      return [];
+    }
+  },
 };
