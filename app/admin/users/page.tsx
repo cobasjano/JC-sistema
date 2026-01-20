@@ -154,18 +154,22 @@ export default function AdminUsersPage() {
                     {u.role === 'admin' ? '👤' : '🏪'}
                   </div>
                   <div className="flex gap-2">
-                    <button 
-                      onClick={() => handleOpenEdit(u)}
-                      className="p-2 hover:bg-slate-50 rounded-lg transition-colors text-slate-400 hover:text-slate-900"
-                    >
-                      ✏️
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(u.id)}
-                      className="p-2 hover:bg-red-50 rounded-lg transition-colors text-slate-400 hover:text-red-500"
-                    >
-                      🗑️
-                    </button>
+                    {u.role === 'pos' && (
+                      <>
+                        <button 
+                          onClick={() => handleOpenEdit(u)}
+                          className="p-2 hover:bg-slate-50 rounded-lg transition-colors text-slate-400 hover:text-slate-900"
+                        >
+                          ✏️
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(u.id)}
+                          className="p-2 hover:bg-red-50 rounded-lg transition-colors text-slate-400 hover:text-red-500"
+                        >
+                          🗑️
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-1">{u.name || 'Sin nombre'}</h3>
@@ -236,9 +240,10 @@ export default function AdminUsersPage() {
                     value={role}
                     onChange={(e) => setRole(e.target.value as UserRole)}
                     className="w-full px-5 py-3 rounded-2xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-slate-900 outline-none transition-all"
+                    disabled={editingUser?.role === 'admin'}
                   >
                     <option value="pos">Caja (POS)</option>
-                    <option value="admin">Administrador</option>
+                    {editingUser?.role === 'admin' && <option value="admin">Administrador</option>}
                   </select>
                 </div>
                 {role === 'pos' && (

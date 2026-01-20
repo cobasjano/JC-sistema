@@ -16,6 +16,9 @@ export default function SuperAdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [showAddTenant, setShowAddTenant] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [managingUsersTenant, setManagingUsersTenant] = useState<Tenant | null>(null);
+  const [tenantUsers, setTenantUsers] = useState<User[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   
   // New/Edit Tenant Form
   const [tenantName, setTenantName] = useState('');
@@ -130,6 +133,32 @@ export default function SuperAdminDashboard() {
     } catch (err) {
       console.error(err);
       alert('Error inesperado');
+    }
+  };
+
+  const fetchTenantUsers = async (tenantId: string) => {
+    setLoadingUsers(true);
+    const data = await authService.getUsersByTenant(tenantId);
+    setTenantUsers(data);
+    setLoadingUsers(false);
+  };
+
+  const handleUpdateUser = async (userId: string, updates: any) => {
+    const success = await authService.updateUser(userId, updates);
+    if (success && managingUsersTenant) {
+      fetchTenantUsers(managingUsersTenant.id);
+    } else {
+      alert('Error al actualizar el usuario');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('¿Estás seguro de eliminar este usuario?')) return;
+    const success = await authService.deleteUser(userId);
+    if (success && managingUsersTenant) {
+      fetchTenantUsers(managingUsersTenant.id);
+    } else {
+      alert('Error al eliminar el usuario');
     }
   };
 
@@ -275,6 +304,91 @@ export default function SuperAdminDashboard() {
           </div>
         )}
 
+        {managingUsersTenant && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl border border-white/10">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold tracking-tight">Usuarios de {managingUsersTenant.name}</h2>
+                <button 
+                  onClick={() => setManagingUsersTenant(null)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {loadingUsers ? (
+                <div className="flex justify-center py-10">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500 border-t-transparent"></div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {tenantUsers.map(u => (
+                      <div key={u.id} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                        <div>
+                          <p className="font-bold text-sm">{u.name || 'Sin nombre'}</p>
+                          <p className="text-xs text-gray-500">{u.email}</p>
+                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                            u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {u.role}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => {
+                              const newName = prompt('Nuevo nombre:', u.name || '');
+                              if (newName !== null) handleUpdateUser(u.id, { name: newName });
+                            }}
+                            className="text-xs font-bold text-orange-500"
+                          >
+                            Editar
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteUser(u.id)}
+                            className="text-xs font-bold text-red-500"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-6 border-t border-gray-100 dark:border-gray-700">
+                    <h3 className="text-sm font-bold mb-4 uppercase tracking-widest text-gray-400">Añadir Nuevo Administrador</h3>
+                    <form 
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const form = e.target as HTMLFormElement;
+                        const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+                        const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+                        const name = (form.elements.namedItem('name') as HTMLInputElement).value;
+                        
+                        const newUser = await authService.register(email, password, 'admin', managingUsersTenant.id);
+                        if (newUser) {
+                          if (name) await authService.updateUser(newUser.id, { name });
+                          fetchTenantUsers(managingUsersTenant.id);
+                          form.reset();
+                        } else {
+                          alert('Error al crear el usuario');
+                        }
+                      }}
+                      className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+                    >
+                      <input name="name" placeholder="Nombre" className="px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-sm" required />
+                      <input name="email" type="email" placeholder="Email" className="px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-sm" required />
+                      <input name="password" type="password" placeholder="Contraseña" className="px-4 py-2 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 text-sm" required />
+                      <button type="submit" className="sm:col-span-3 bg-orange-500 text-white py-2 rounded-xl font-bold text-sm">Crear Administrador</button>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-500 border-t-transparent"></div>
@@ -305,6 +419,16 @@ export default function SuperAdminDashboard() {
                       title="Eliminar"
                     >
                       🗑️
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setManagingUsersTenant(tenant);
+                        fetchTenantUsers(tenant.id);
+                      }}
+                      className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors text-gray-400 hover:text-blue-500"
+                      title="Administrar Usuarios"
+                    >
+                      👥
                     </button>
                   </div>
                 </div>
