@@ -670,4 +670,32 @@ export const salesService = {
       return [];
     }
   },
+
+  async getGlobalStats(): Promise<{ total_revenue: number; total_sales: number; tenant_count: number } | null> {
+    try {
+      const { data: sales, error: sError } = await supabase
+        .from('sales')
+        .select('total');
+
+      if (sError) throw sError;
+
+      const { count: tenantCount, error: tError } = await supabase
+        .from('tenants')
+        .select('*', { count: 'exact', head: true });
+
+      if (tError) throw tError;
+
+      const total_revenue = sales?.reduce((sum, s) => sum + Number(s.total), 0) || 0;
+      const total_sales = sales?.length || 0;
+
+      return {
+        total_revenue,
+        total_sales,
+        tenant_count: tenantCount || 0
+      };
+    } catch (error) {
+      console.error('Error in getGlobalStats:', error);
+      return null;
+    }
+  },
 };

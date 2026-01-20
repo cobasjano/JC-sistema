@@ -8,12 +8,14 @@ import { supabase } from '@/lib/supabase';
 import { Tenant, User } from '@/lib/types';
 import { authService } from '@/lib/services/auth';
 import { tenantService } from '@/lib/services/tenants';
+import { salesService } from '@/lib/services/sales';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [globalStats, setGlobalStats] = useState<{ total_revenue: number; total_sales: number; tenant_count: number } | null>(null);
   const [showAddTenant, setShowAddTenant] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [managingUsersTenant, setManagingUsersTenant] = useState<Tenant | null>(null);
@@ -35,7 +37,13 @@ export default function SuperAdminDashboard() {
     }
 
     fetchTenants();
+    fetchGlobalStats();
   }, [user, router]);
+
+  const fetchGlobalStats = async () => {
+    const stats = await salesService.getGlobalStats();
+    setGlobalStats(stats);
+  };
 
   const fetchTenants = async () => {
     setLoading(true);
@@ -180,6 +188,23 @@ export default function SuperAdminDashboard() {
             <span>+</span> Nuevo Comercio
           </button>
         </div>
+
+        {globalStats && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Ventas Totales (Red)</span>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">${globalStats.total_revenue.toLocaleString()}</div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Operaciones Globales</span>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{globalStats.total_sales.toLocaleString()} transacciones</div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Comercios Activos</span>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{globalStats.tenant_count} clientes</div>
+            </div>
+          </div>
+        )}
 
         {showAddTenant && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -335,21 +360,48 @@ export default function SuperAdminDashboard() {
                             {u.role}
                           </span>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <button 
                             onClick={() => {
                               const newName = prompt('Nuevo nombre:', u.name || '');
                               if (newName !== null) handleUpdateUser(u.id, { name: newName });
                             }}
-                            className="text-xs font-bold text-orange-500"
+                            className="text-[10px] font-black text-orange-500 uppercase tracking-widest bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded"
                           >
-                            Editar
+                            Nombre
+                          </button>
+                          <button 
+                            onClick={() => {
+                              const newEmail = prompt('Nuevo email:', u.email);
+                              if (newEmail) handleUpdateUser(u.id, { email: newEmail });
+                            }}
+                            className="text-[10px] font-black text-blue-500 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded"
+                          >
+                            Email
+                          </button>
+                          <button 
+                            onClick={() => {
+                              const newRole = u.role === 'admin' ? 'pos' : 'admin';
+                              if (confirm(`¿Cambiar rol a ${newRole}?`)) handleUpdateUser(u.id, { role: newRole });
+                            }}
+                            className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded"
+                          >
+                            Rol
+                          </button>
+                          <button 
+                            onClick={() => {
+                              const newPass = prompt('Nueva contraseña:');
+                              if (newPass) handleUpdateUser(u.id, { password: newPass });
+                            }}
+                            className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded"
+                          >
+                            Pass
                           </button>
                           <button 
                             onClick={() => handleDeleteUser(u.id)}
-                            className="text-xs font-bold text-red-500"
+                            className="text-[10px] font-black text-red-500 uppercase tracking-widest bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded"
                           >
-                            Eliminar
+                            Borrar
                           </button>
                         </div>
                       </div>

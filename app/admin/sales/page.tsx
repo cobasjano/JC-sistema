@@ -105,10 +105,10 @@ export default function AdminSalesPage() {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-slate-800">{item.product_name}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Unitario: ${(item.subtotal / item.quantity).toLocaleString()}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Unitario: ${((item.subtotal || 0) / (item.quantity || 1)).toLocaleString()}</p>
                       </div>
                     </div>
-                    <span className="text-sm font-bold text-slate-900">${item.subtotal.toLocaleString()}</span>
+                    <span className="text-sm font-bold text-slate-900">${(item.subtotal || 0).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -128,7 +128,7 @@ export default function AdminSalesPage() {
               <div className="flex justify-between items-center mb-4">
                 <span className="text-sm font-medium text-slate-500">Método de Pago</span>
                 <span className="px-3 py-1 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-700 shadow-sm uppercase tracking-widest">
-                  {selectedSale.payment_method}
+                  {selectedSale.payment_method || 'Desconocido'}
                 </span>
               </div>
               
@@ -136,11 +136,11 @@ export default function AdminSalesPage() {
                 <div className="mb-6 p-4 bg-white rounded-2xl border border-slate-200 space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-500">{selectedSale.payment_breakdown.method1}</span>
-                    <span className="font-bold text-slate-700">${selectedSale.payment_breakdown.amount1.toLocaleString()}</span>
+                    <span className="font-bold text-slate-700">${(selectedSale.payment_breakdown.amount1 || 0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-slate-500">{selectedSale.payment_breakdown.method2}</span>
-                    <span className="font-bold text-slate-700">${selectedSale.payment_breakdown.amount2.toLocaleString()}</span>
+                    <span className="font-bold text-slate-700">${(selectedSale.payment_breakdown.amount2 || 0).toLocaleString()}</span>
                   </div>
                 </div>
               )}
@@ -148,7 +148,7 @@ export default function AdminSalesPage() {
               <div className="flex justify-between items-center pt-4 border-t border-slate-200">
                 <span className="text-lg font-light text-slate-900 tracking-tight">Total Cobrado</span>
                 <span className="text-3xl font-black text-orange-600 tracking-tighter">
-                  ${selectedSale.total.toLocaleString()}
+                  ${(selectedSale.total || 0).toLocaleString()}
                 </span>
               </div>
             </div>

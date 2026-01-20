@@ -65,7 +65,7 @@ export interface CartItem {
 export interface Sale {
   id: string;
   tenant_id: string;
-  pos_id: string;
+  pos_id?: string;
   pos_number: number;
   customer_id?: string;
   total: number;
@@ -141,7 +141,7 @@ export interface ExpenseItem {
 export interface Expense {
   id: string;
   tenant_id: string;
-  created_by: string;
+  created_by?: string;
   pos_number?: number;
   category?: ExpenseCategory;
   items: ExpenseItem[];
