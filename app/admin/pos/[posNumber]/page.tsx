@@ -228,34 +228,6 @@ export default function POSDetailPage() {
           Estadísticas - POS {posNumber}
         </h1>
 
-        {stats && (
-          <div className="mb-6 bg-white dark:bg-gray-800 p-4 rounded-xl shadow border-l-4 border-orange-500">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Predicción para Hoy</h2>
-                <div className="flex gap-4 mt-2">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] uppercase text-gray-400">Mañana</span>
-                    <span className="font-semibold text-gray-700 dark:text-gray-200">{predictionService.getForecast(posNumber, currentWeather, undefined, new Date(), undefined, tenant.settings.seasonality_months).morning.icon} {predictionService.getForecast(posNumber, currentWeather, undefined, new Date(), undefined, tenant.settings.seasonality_months).morning.status}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] uppercase text-gray-400">Tarde</span>
-                    <span className="font-semibold text-gray-700 dark:text-gray-200">{predictionService.getForecast(posNumber, currentWeather, undefined, new Date(), undefined, tenant.settings.seasonality_months).afternoon.icon} {predictionService.getForecast(posNumber, currentWeather, undefined, new Date(), undefined, tenant.settings.seasonality_months).afternoon.status}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] uppercase text-gray-400">Noche</span>
-                    <span className="font-semibold text-gray-700 dark:text-gray-200">{predictionService.getForecast(posNumber, currentWeather, undefined, new Date(), undefined, tenant.settings.seasonality_months).night.icon} {predictionService.getForecast(posNumber, currentWeather, undefined, new Date(), undefined, tenant.settings.seasonality_months).night.status}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg flex items-center gap-3 border border-orange-100 dark:border-orange-800/50">
-                <span className="text-2xl">💡</span>
-                <p className="text-sm font-medium text-orange-700 dark:text-orange-300">{predictionService.getForecast(posNumber, undefined, undefined, new Date(), undefined, tenant.settings.seasonality_months).tip}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {loading ? (
           <div className="text-center py-12 text-gray-900 dark:text-gray-100">Cargando estadísticas...</div>
         ) : isNaN(posNumber) || posNumber < 1 || !tenant.settings.pos_names[posNumber] ? (
