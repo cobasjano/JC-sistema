@@ -9,6 +9,11 @@ export interface PaymentBreakdown {
   amount2: number;
 }
 
+export interface ThemeSettings {
+  primary?: string;
+  secondary?: string;
+}
+
 export interface TenantSettings {
   pos_names: Record<number, string>;
   pos_locations: Record<number, string>;
@@ -18,6 +23,7 @@ export interface TenantSettings {
   delete_sale_password?: string;
   commissions?: Record<string, number>;
   seasonality_months?: number[]; // e.g., [0, 1] for Jan/Feb
+  theme?: ThemeSettings;
 }
 
 export interface Tenant {

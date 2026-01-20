@@ -4,7 +4,7 @@
 - generic [active] [ref=e1]:
   - generic [ref=e3]:
     - generic [ref=e4]:
-      - heading "POCOPÁNJUGUETERÍA" [level=1] [ref=e5]
+      - heading "SISTEMAJC" [level=1] [ref=e5]
       - paragraph [ref=e6]: Panel de Acceso
     - generic [ref=e7]:
       - generic [ref=e8]:

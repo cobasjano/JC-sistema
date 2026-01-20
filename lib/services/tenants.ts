@@ -1,24 +1,5 @@
 import { supabase } from '@/lib/supabase';
-
-export interface TenantSettings {
-  pos_names: Record<number, string>;
-  pos_locations: Record<number, string>;
-  pos_phones: Record<number, string>;
-  weather_coordinates: Record<string, { lat: number, lon: number }>;
-  delete_catalog_password?: string;
-  delete_sale_password?: string;
-  commissions?: Record<string, number>;
-  seasonality_months?: number[];
-}
-
-export interface Tenant {
-  id: string;
-  name: string;
-  slug: string;
-  settings: TenantSettings;
-  created_at: string;
-  updated_at: string;
-}
+import { Tenant, TenantSettings } from '@/lib/types';
 
 const DEFAULT_SETTINGS: TenantSettings = {
   pos_names: {
@@ -51,7 +32,11 @@ const DEFAULT_SETTINGS: TenantSettings = {
     'Crédito': 0.035,
     'Mixto': 0.01
   },
-  seasonality_months: [0, 1]
+  seasonality_months: [0, 1],
+  theme: {
+    primary: '#f97316', // orange-500
+    secondary: '#0f172a' // slate-900
+  }
 };
 
 export const tenantService = {

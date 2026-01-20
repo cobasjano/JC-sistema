@@ -72,7 +72,8 @@ export function Navbar() {
           { href: '/admin/sales', label: 'Ventas' },
           { href: '/admin/products', label: 'Productos' },
           { href: '/admin/expenses', label: 'Gastos' },
-          { href: '/admin/users', label: 'Usuarios' }
+          { href: '/admin/users', label: 'Usuarios' },
+          { href: '/admin/settings', label: 'Configuración' }
         ]
       : [
           { href: '/pos/catalog', label: 'Catálogo' },
@@ -88,7 +89,7 @@ export function Navbar() {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-6 flex-shrink-0">
             <Link href="/" className="text-base sm:text-lg font-semibold tracking-tight text-slate-950 whitespace-nowrap">
-              SISTEMA<span className="text-orange-500">VENTAS</span>
+              SISTEMA<span className="text-primary">JC</span>
             </Link>
             
             {forecast && (
@@ -127,7 +128,7 @@ export function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-orange-500 hover:bg-orange-50 px-4 py-2 rounded-lg transition-all"
+                className="text-xs font-semibold uppercase tracking-wide text-gray-500 hover:text-primary hover:bg-primary-light px-4 py-2 rounded-lg transition-all"
               >
                 {item.label}
               </Link>
@@ -167,7 +168,7 @@ export function Navbar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setMenuOpen(false)}
-                className="block px-4 py-2.5 rounded-xl hover:bg-gray-50 text-gray-600 hover:text-orange-500 transition-all text-sm font-semibold"
+                className="block px-4 py-2.5 rounded-xl hover:bg-gray-50 text-gray-600 hover:text-primary transition-all text-sm font-semibold"
               >
                 {item.label}
               </Link>

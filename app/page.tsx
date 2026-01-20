@@ -48,7 +48,7 @@ export default function LoginPage() {
       <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-10 w-full max-w-md">
         <div className="mb-10 text-center">
           <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-            POCOPÁN<span className="text-orange-500">JUGUETERÍA</span>
+            SISTEMA<span className="text-primary">JC</span>
           </h1>
           <p className="text-gray-600 text-xs font-bold uppercase tracking-[0.2em] mt-2">
             Panel de Acceso
@@ -65,7 +65,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm transition-all text-gray-900 placeholder-gray-300"
+              className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm transition-all text-gray-900 placeholder-gray-300"
               placeholder="admin@ejemplo.com"
             />
           </div>
@@ -79,7 +79,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm transition-all text-gray-900 placeholder-gray-300"
+              className="w-full px-5 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm transition-all text-gray-900 placeholder-gray-300"
               placeholder="••••••••"
             />
           </div>
@@ -93,7 +93,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-orange-500 text-white py-3.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-orange-600 active:scale-[0.98] transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+            className="w-full bg-primary text-white py-3.5 rounded-xl text-xs font-black uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
           >
             {loading ? 'Verificando...' : 'Entrar al Sistema'}
           </button>

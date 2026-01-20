@@ -1,4 +1,4 @@
-# Configuración de Pocopán Juguetería
+# Configuración de Sistema JC
 
 ## Requisitos
 

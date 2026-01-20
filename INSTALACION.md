@@ -1,4 +1,4 @@
-# Guía de Instalación - Pocopán Juguetería
+# Guía de Instalación - Sistema JC
 
 ## 🔧 Paso 1: Configurar Supabase
 
@@ -130,7 +130,7 @@ Una vez que todo funciona localmente:
    ```bash
    git init
    git add .
-   git commit -m "Initial commit: Pocopán Juguetería"
+   git commit -m "Initial commit: Sistema JC"
    git branch -M main
    ```
 
@@ -193,4 +193,4 @@ Si necesitas ayuda:
 
 ---
 
-**¡Listo!** Tu sistema Pocopán Juguetería está configurado y funcionando.
+**¡Listo!** Tu sistema Sistema JC está configurado y funcionando.

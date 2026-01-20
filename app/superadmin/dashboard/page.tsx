@@ -221,7 +221,7 @@ export default function SuperAdminDashboard() {
                       setTenantSlug(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
                     }}
                     className="w-full px-4 py-3 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                    placeholder="Ej: Juguetería Central"
+                    placeholder="Ej: Comercio Central"
                     required
                   />
                 </div>
@@ -293,7 +293,7 @@ export default function SuperAdminDashboard() {
                       setTenantSlug(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
                     }}
                     className="w-full px-4 py-3 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                    placeholder="Ej: Juguetería Central"
+                    placeholder="Ej: Comercio Central"
                     required
                   />
                 </div>
