@@ -2,10 +2,12 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #020617; /* Slate 950 - Very dark blue */
+  --foreground: #020617;
   --primary: #f97316;
   --primary-light: rgba(249, 115, 22, 0.1);
+  --primary-dark-variant: #ea580c;
   --secondary: #0f172a;
+  --secondary-darker: #020617;
 }
 
 @theme inline {
@@ -13,14 +15,18 @@
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-light: var(--primary-light);
+  --color-primary-dark: var(--primary-dark-variant);
   --color-secondary: var(--secondary);
+  --color-secondary-dark: var(--secondary-darker);
   --font-sans: var(--font-inter);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #020617;
+    --background: var(--secondary-darker);
     --foreground: #f8fafc;
+    /* Primary in dark mode uses the variant for better contrast */
+    --primary: var(--primary-dark-variant);
   }
 }
 
