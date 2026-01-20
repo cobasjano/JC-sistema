@@ -4,7 +4,7 @@ import { tenantService } from './tenants';
 import crypto from 'crypto';
 
 export const authService = {
-  async login(email: string, password: string): Promise<{ user: User; token: string; tenant: Tenant } | null> {
+  async login(email: string, password: string): Promise<{ user: User; token: string; tenant: Tenant | null } | null> {
     try {
       const { data: user, error } = await supabase
         .from('users')
@@ -22,9 +22,11 @@ export const authService = {
         return null;
       }
 
-      const tenant = await tenantService.getTenant(user.tenant_id);
-      if (!tenant) {
-        return null;
+      let tenant = null;
+      if (user.role !== 'superadmin') {
+        if (!user.tenant_id) return null;
+        tenant = await tenantService.getTenant(user.tenant_id);
+        if (!tenant) return null;
       }
 
       const token = crypto.randomBytes(32).toString('hex');
@@ -77,7 +79,7 @@ export const authService = {
     }
   },
 
-  async validateToken(token: string): Promise<{ user: User; tenant: Tenant } | null> {
+  async validateToken(token: string): Promise<{ user: User; tenant: Tenant | null } | null> {
     try {
       const { data, error } = await supabase
         .from('sessions')
@@ -100,9 +102,11 @@ export const authService = {
         return null;
       }
 
-      const tenant = await tenantService.getTenant(user.tenant_id);
-      if (!tenant) {
-        return null;
+      let tenant = null;
+      if (user.role !== 'superadmin') {
+        if (!user.tenant_id) return null;
+        tenant = await tenantService.getTenant(user.tenant_id);
+        if (!tenant) return null;
       }
 
       return { user, tenant };

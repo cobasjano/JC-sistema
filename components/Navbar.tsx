@@ -62,19 +62,24 @@ export function Navbar() {
     return null;
   }
 
-  const navItems = user.role === 'admin' 
-    ? [
-        { href: '/admin/dashboard', label: 'Dashboard' },
-        { href: '/admin/sales', label: 'Ventas' },
-        { href: '/admin/products', label: 'Productos' },
-        { href: '/admin/expenses', label: 'Gastos' }
-      ]
-    : [
-        { href: '/pos/catalog', label: 'Catálogo' },
-        { href: '/pos/customers', label: 'Clientes' },
-        { href: '/pos/sales', label: 'Historial' },
-        { href: '/pos/stats', label: 'Estadísticas' }
-      ];
+  const navItems = useMemo(() => {
+    if (user.role === 'superadmin') {
+      return [{ href: '/superadmin/dashboard', label: 'Dashboard SaaS' }];
+    }
+    return user.role === 'admin' 
+      ? [
+          { href: '/admin/dashboard', label: 'Dashboard' },
+          { href: '/admin/sales', label: 'Ventas' },
+          { href: '/admin/products', label: 'Productos' },
+          { href: '/admin/expenses', label: 'Gastos' }
+        ]
+      : [
+          { href: '/pos/catalog', label: 'Catálogo' },
+          { href: '/pos/customers', label: 'Clientes' },
+          { href: '/pos/sales', label: 'Historial' },
+          { href: '/pos/stats', label: 'Estadísticas' }
+        ];
+  }, [user.role]);
 
   return (
     <nav className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50" style={{ WebkitFontSmoothing: 'antialiased' }}>

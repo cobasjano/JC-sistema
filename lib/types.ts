@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'pos';
+export type UserRole = 'superadmin' | 'admin' | 'pos';
 
 export type PaymentMethod = 'Efectivo' | 'Transferencia' | 'QR' | 'Débito' | 'Crédito' | 'Mixto';
 

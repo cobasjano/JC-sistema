@@ -26,7 +26,9 @@ export default function LoginPage() {
         setToken(result.token);
         setTenant(result.tenant);
 
-        if (result.user.role === 'admin') {
+        if (result.user.role === 'superadmin') {
+          router.push('/superadmin/dashboard');
+        } else if (result.user.role === 'admin') {
           router.push('/admin/dashboard');
         } else {
           router.push('/pos/catalog');
