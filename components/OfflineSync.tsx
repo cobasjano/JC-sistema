@@ -30,6 +30,7 @@ export function OfflineSync() {
         const result = await salesService.createSale(
           user.id,
           user.pos_number || sale.posNumber,
+          user.tenant_id,
           mappedItems,
           sale.total,
           (sale.paymentMethod as PaymentMethod) || undefined,

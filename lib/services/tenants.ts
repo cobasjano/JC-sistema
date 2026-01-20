@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 export interface TenantSettings {
   pos_names: Record<number, string>;
   pos_locations: Record<number, string>;
+  pos_phones: Record<number, string>;
   weather_coordinates: Record<string, { lat: number, lon: number }>;
   delete_catalog_password?: string;
   delete_sale_password?: string;

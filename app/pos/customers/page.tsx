@@ -53,6 +53,7 @@ export default function CustomersPage() {
 
   const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     setFormError('');
 
     if (!fullName.trim() || !phoneNumber.trim()) {

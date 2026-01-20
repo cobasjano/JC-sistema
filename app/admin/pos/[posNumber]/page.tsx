@@ -216,7 +216,7 @@ export default function POSDetailPage() {
     fetchStats();
   }, [user, router, posNumber, params.posNumber, tenant]);
 
-  if (!user) {
+  if (!user || !tenant) {
     return null;
   }
 
