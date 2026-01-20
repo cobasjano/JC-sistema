@@ -9,11 +9,32 @@ export interface PaymentBreakdown {
   amount2: number;
 }
 
+export interface TenantSettings {
+  pos_names: Record<number, string>;
+  pos_locations: Record<number, string>;
+  pos_phones?: Record<number, string>;
+  weather_coordinates: Record<string, { lat: number, lon: number }>;
+  delete_catalog_password?: string;
+  delete_sale_password?: string;
+  commissions?: Record<string, number>;
+  seasonality_months?: number[]; // e.g., [0, 1] for Jan/Feb
+}
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  settings: TenantSettings;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface User {
   id: string;
   email: string;
   password_hash: string;
   role: UserRole;
+  tenant_id: string;
   pos_number?: number;
   name?: string;
   created_at: string;
@@ -22,6 +43,7 @@ export interface User {
 
 export interface Product {
   id: string;
+  tenant_id: string;
   name: string;
   description: string;
   price: number;
@@ -42,6 +64,7 @@ export interface CartItem {
 
 export interface Sale {
   id: string;
+  tenant_id: string;
   pos_id: string;
   pos_number: number;
   customer_id?: string;
@@ -54,6 +77,7 @@ export interface Sale {
 
 export interface Customer {
   id: string;
+  tenant_id: string;
   full_name: string;
   phone_number: string;
   pos_number: number;
@@ -94,6 +118,7 @@ export interface AdminDashboardStats extends DashboardStats {
 
 export interface PurchaseRecord {
   id: string;
+  tenant_id: string;
   product_id: string;
   quantity: number;
   purchase_price: number;
@@ -115,6 +140,7 @@ export interface ExpenseItem {
 
 export interface Expense {
   id: string;
+  tenant_id: string;
   created_by: string;
   pos_number?: number;
   category?: ExpenseCategory;

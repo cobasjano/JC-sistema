@@ -6,8 +6,8 @@ import { Navbar } from '@/components/Navbar';
 import { useAuthStore } from '@/lib/store';
 import { salesService } from '@/lib/services/sales';
 import { predictionService } from '@/lib/services/prediction';
-import { POSDashboardStats, Sale } from '@/lib/types';
-import { weatherService, WeatherCondition } from '@/lib/services/weather';
+import { POSDashboardStats, Sale, TenantSettings } from '@/lib/types';
+import { weatherService, WeatherCondition, DayWeatherDetail } from '@/lib/services/weather';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface HourlyData {
@@ -15,15 +15,6 @@ interface HourlyData {
   total: number;
   percentage: number;
   sales_count: number;
-}
-
-interface DayWeatherDetail {
-  date: string;
-  morning: string;
-  afternoon: string;
-  evening: string;
-  summary: string;
-  hasVariation: boolean;
 }
 
 interface WeatherSalesData {
@@ -35,149 +26,6 @@ interface PaymentSalesData {
   name: string;
   value: number;
   [key: string]: string | number;
-}
-
-const LOCATION_COORDINATES: Record<number, { lat: number; lon: number }> = {
-  1: { lat: -36.4333, lon: -56.7167 }, // Costa del Este
-  2: { lat: -37.3333, lon: -57.0167 }, // Mar de las Pampas
-  3: { lat: -37.1328, lon: -56.7456 }, // Costa Esmeralda
-};
-
-const WEATHER_CODES: Record<number, string> = {
-  0: 'Despejado',
-  1: 'Parcialmente nublado',
-  2: 'Nublado',
-  3: 'Nublado',
-  45: 'Neblina',
-  48: 'Neblina',
-  51: 'Lluvia ligera',
-  53: 'Lluvia',
-  55: 'Lluvia fuerte',
-  61: 'Lluvia',
-  63: 'Lluvia',
-  65: 'Lluvia fuerte',
-  80: 'Lluvia',
-  81: 'Lluvia',
-  82: 'Lluvia fuerte',
-};
-
-async function fetchHourlyWeather(latitude: number, longitude: number, days: number = 200) {
-  try {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = new Date().toISOString().split('T')[0];
-
-    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${startStr}&end_date=${endStr}&hourly=weather_code,precipitation&timezone=America/Argentina/Buenos_Aires`;
-    
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Weather API error');
-    
-    const data = await response.json();
-    return {
-      times: data.hourly.time,
-      codes: data.hourly.weather_code,
-      precipitation: data.hourly.precipitation
-    };
-  } catch (error) {
-    console.error('Error fetching weather:', error);
-    return null;
-  }
-}
-
-function getWeatherSummaryForDay(times: string[], codes: number[], precipitation: number[], date: string): DayWeatherDetail {
-  const dayStart = new Date(date);
-  const dayEnd = new Date(date);
-  dayEnd.setDate(dayEnd.getDate() + 1);
-
-  const dayIndices = times
-    .map((time, idx) => {
-      const t = new Date(time);
-      return t >= dayStart && t < dayEnd ? idx : -1;
-    })
-    .filter(idx => idx !== -1);
-
-  if (dayIndices.length === 0) {
-    return {
-      date,
-      morning: 'N/D',
-      afternoon: 'N/D',
-      evening: 'N/D',
-      summary: 'Sin datos',
-      hasVariation: false
-    };
-  }
-
-  const getMostCommonWeather = (indices: number[]) => {
-    const codes_in_range = indices.map(i => codes[i] || 0);
-    const hasRain = indices.some(i => precipitation[i] > 0.1);
-    
-    if (hasRain) return 'Lluvia';
-    const mostCommon = codes_in_range[0];
-    return WEATHER_CODES[mostCommon] || 'Desconocido';
-  };
-
-  const morningIndices = dayIndices.filter(idx => {
-    const h = new Date(times[idx]).getHours();
-    return h >= 6 && h < 12;
-  });
-
-  const afternoonIndices = dayIndices.filter(idx => {
-    const h = new Date(times[idx]).getHours();
-    return h >= 12 && h < 18;
-  });
-
-  const eveningIndices = dayIndices.filter(idx => {
-    const h = new Date(times[idx]).getHours();
-    return h >= 18 || h < 6;
-  });
-
-  const morning = morningIndices.length > 0 ? getMostCommonWeather(morningIndices) : 'N/D';
-  const afternoon = afternoonIndices.length > 0 ? getMostCommonWeather(afternoonIndices) : 'N/D';
-  const evening = eveningIndices.length > 0 ? getMostCommonWeather(eveningIndices) : 'N/D';
-
-  const conditions = [morning, afternoon, evening].filter(c => c !== 'N/D');
-  const hasVariation = new Set(conditions).size > 1;
-  
-  const summary = hasVariation 
-    ? `Mañana: ${morning}, Tarde: ${afternoon}, Noche: ${evening}`
-    : morning;
-
-  return {
-    date,
-    morning,
-    afternoon,
-    evening,
-    summary,
-    hasVariation
-  };
-}
-
-async function getWeatherByPos(posNumber: number, days: number = 200): Promise<Record<string, DayWeatherDetail>> {
-  const coords = LOCATION_COORDINATES[posNumber];
-  if (!coords) return {};
-
-  const weatherData = await fetchHourlyWeather(coords.lat, coords.lon, days);
-  if (!weatherData) return {};
-
-  const result: Record<string, DayWeatherDetail> = {};
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
-
-  for (let i = 0; i < days; i++) {
-    const d = new Date(startDate);
-    d.setDate(d.getDate() + i);
-    const dateStr = d.toISOString().split('T')[0];
-    
-    result[dateStr] = getWeatherSummaryForDay(
-      weatherData.times,
-      weatherData.codes,
-      weatherData.precipitation,
-      dateStr
-    );
-  }
-
-  return result;
 }
 
 function getSalesByWeatherAndHour(
@@ -232,7 +80,7 @@ function getSalesByPaymentMethod(sales: Sale[]): PaymentSalesData[] {
 export default function POSDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const { user } = useAuthStore();
+  const { user, tenant } = useAuthStore();
   const [stats, setStats] = useState<POSDashboardStats | null>(null);
   const [salesPerHour, setSalesPerHour] = useState<HourlyData[]>([]);
   const [salesPerDay, setSalesPerDay] = useState<Array<{ date: string; total: number }>>([]);
@@ -242,7 +90,7 @@ export default function POSDetailPage() {
   const [currentWeather, setCurrentWeather] = useState<WeatherCondition>('sunny');
   const posNumber = parseInt(params.posNumber as string, 10) || 0;
 
-  const getSalesPerHour = async (pos: number, days = 30) => {
+  const getSalesPerHour = async (pos: number, tenantId: string, days = 30) => {
     try {
       const now = new Date();
       const argentinaTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
@@ -250,7 +98,7 @@ export default function POSDetailPage() {
       startDate.setDate(startDate.getDate() - days);
       startDate.setHours(3, 0, 0, 0);
 
-      const sales = await salesService.getSalesByPosNumber(pos, 5000, startDate.toISOString());
+      const sales = await salesService.getSalesByPosNumber(pos, tenantId, 5000, startDate.toISOString());
 
       if (!sales) {
         return [];
@@ -324,7 +172,7 @@ export default function POSDetailPage() {
   };
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') {
+    if (!user || user.role !== 'admin' || !tenant) {
       router.push('/');
       return;
     }
@@ -333,21 +181,22 @@ export default function POSDetailPage() {
       return;
     }
 
-    if (isNaN(posNumber) || posNumber < 1 || posNumber > 3) {
+    const maxPos = Object.keys(tenant.settings.pos_names).length;
+    if (isNaN(posNumber) || posNumber < 1 || posNumber > maxPos) {
       setLoading(false);
       return;
     }
 
     const fetchStats = async () => {
       try {
-        weatherService.getCurrentWeather(posNumber).then(setCurrentWeather);
-        const data = await salesService.getPosDashboard('', posNumber);
-        const perHour = await getSalesPerHour(posNumber, 30);
-        const perDay = await salesService.getSalesByDayAndPos(posNumber, 200);
-        const weather = await getWeatherByPos(posNumber, 200);
+        weatherService.getCurrentWeather(posNumber, tenant.settings).then(setCurrentWeather);
+        const data = await salesService.getPosDashboard('', posNumber, user.tenant_id, tenant.settings);
+        const perHour = await getSalesPerHour(posNumber, user.tenant_id, 30);
+        const perDay = await salesService.getSalesByDayAndPos(posNumber, user.tenant_id, 200);
+        const weather = await weatherService.getWeatherHistoryByPos(posNumber, tenant.settings, 200);
         
         // Use service with higher limit for statistics
-        const sales = await salesService.getSalesByPosNumber(posNumber, 5000);
+        const sales = await salesService.getSalesByPosNumber(posNumber, user.tenant_id, 5000);
         
         if (sales && sales.length > 0) {
           setSalesByWeather(getSalesByWeatherAndHour(sales, weather));
@@ -365,7 +214,7 @@ export default function POSDetailPage() {
     };
 
     fetchStats();
-  }, [user, router, posNumber, params.posNumber]);
+  }, [user, router, posNumber, params.posNumber, tenant]);
 
   if (!user) {
     return null;
@@ -387,21 +236,21 @@ export default function POSDetailPage() {
                 <div className="flex gap-4 mt-2">
                   <div className="flex flex-col">
                     <span className="text-[10px] uppercase text-gray-400">Mañana</span>
-                    <span className="font-semibold text-gray-700 dark:text-gray-200">{predictionService.getForecast(posNumber, currentWeather).morning.icon} {predictionService.getForecast(posNumber, currentWeather).morning.status}</span>
+                    <span className="font-semibold text-gray-700 dark:text-gray-200">{predictionService.getForecast(posNumber, currentWeather, undefined, new Date(), undefined, tenant.settings.seasonality_months).morning.icon} {predictionService.getForecast(posNumber, currentWeather, undefined, new Date(), undefined, tenant.settings.seasonality_months).morning.status}</span>
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] uppercase text-gray-400">Tarde</span>
-                    <span className="font-semibold text-gray-700 dark:text-gray-200">{predictionService.getForecast(posNumber, currentWeather).afternoon.icon} {predictionService.getForecast(posNumber, currentWeather).afternoon.status}</span>
+                    <span className="font-semibold text-gray-700 dark:text-gray-200">{predictionService.getForecast(posNumber, currentWeather, undefined, new Date(), undefined, tenant.settings.seasonality_months).afternoon.icon} {predictionService.getForecast(posNumber, currentWeather, undefined, new Date(), undefined, tenant.settings.seasonality_months).afternoon.status}</span>
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[10px] uppercase text-gray-400">Noche</span>
-                    <span className="font-semibold text-gray-700 dark:text-gray-200">{predictionService.getForecast(posNumber, currentWeather).night.icon} {predictionService.getForecast(posNumber, currentWeather).night.status}</span>
+                    <span className="font-semibold text-gray-700 dark:text-gray-200">{predictionService.getForecast(posNumber, currentWeather, undefined, new Date(), undefined, tenant.settings.seasonality_months).night.icon} {predictionService.getForecast(posNumber, currentWeather, undefined, new Date(), undefined, tenant.settings.seasonality_months).night.status}</span>
                   </div>
                 </div>
               </div>
               <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg flex items-center gap-3 border border-orange-100 dark:border-orange-800/50">
                 <span className="text-2xl">💡</span>
-                <p className="text-sm font-medium text-orange-700 dark:text-orange-300">{predictionService.getForecast(posNumber).tip}</p>
+                <p className="text-sm font-medium text-orange-700 dark:text-orange-300">{predictionService.getForecast(posNumber, undefined, undefined, new Date(), undefined, tenant.settings.seasonality_months).tip}</p>
               </div>
             </div>
           </div>
@@ -409,8 +258,8 @@ export default function POSDetailPage() {
 
         {loading ? (
           <div className="text-center py-12 text-gray-900 dark:text-gray-100">Cargando estadísticas...</div>
-        ) : isNaN(posNumber) || posNumber < 1 || posNumber > 3 ? (
-          <div className="text-center py-12 text-gray-600 dark:text-gray-400">POS no válido. Por favor, selecciona un POS válido (1, 2 ó 3).</div>
+        ) : isNaN(posNumber) || posNumber < 1 || !tenant.settings.pos_names[posNumber] ? (
+          <div className="text-center py-12 text-gray-600 dark:text-gray-400">POS no válido. Por favor, selecciona un POS válido.</div>
         ) : stats ? (
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">

@@ -1,11 +1,10 @@
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { Product } from '@/lib/types';
-import { salesService } from './sales';
+import { Product, TenantSettings } from '@/lib/types';
 
 export const importExportService = {
-  async importProductsFromExcel(file: File): Promise<Omit<Product, 'id' | 'created_at' | 'updated_at'>[]> {
+  async importProductsFromExcel(file: File): Promise<Omit<Product, 'id' | 'created_at' | 'updated_at' | 'tenant_id'>[]> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -68,7 +67,13 @@ export const importExportService = {
     XLSX.writeFile(workbook, `productos_${new Date().toISOString().split('T')[0]}.xlsx`);
   },
 
-  async exportInsightsToPDF(dashboardData: any, allSales: any[], salesPerDay: any[] = []): Promise<void> {
+  async exportInsightsToPDF(
+    dashboardData: any, 
+    allSales: any[], 
+    salesPerDay: any[] = [], 
+    settings?: TenantSettings,
+    tenantName?: string
+  ): Promise<void> {
     const pdf = new jsPDF();
     let yPosition = 10;
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -99,11 +104,7 @@ export const importExportService = {
       yPosition += 6;
     };
 
-    const POS_NAMES: Record<number, string> = {
-      1: 'Costa del Este',
-      2: 'Mar de las Pampas',
-      3: 'Costa Esmeralda',
-    };
+    const posNames = settings?.pos_names || {};
 
     const getTopProductsPerPOS = (posNumber: number, limit: number) => {
       const posSales = allSales.filter((s) => s.pos_number === posNumber);
@@ -128,31 +129,9 @@ export const importExportService = {
         .slice(0, limit);
     };
 
-    const getAllTopProducts = (limit: number) => {
-      const productMap = new Map<string, { name: string; quantity: number; revenue: number }>();
-
-      allSales.forEach((sale: any) => {
-        sale.items.forEach((item: any) => {
-          const productName = item.product_name || item.name || 'Desconocido';
-          const existing = productMap.get(productName) || {
-            name: productName,
-            quantity: 0,
-            revenue: 0,
-          };
-          existing.quantity += item.quantity;
-          existing.revenue += item.subtotal || item.quantity * (item.price || 0);
-          productMap.set(productName, existing);
-        });
-      });
-
-      return Array.from(productMap.values())
-        .sort((a, b) => b.quantity - a.quantity)
-        .slice(0, limit);
-    };
-
     pdf.setFontSize(18);
     pdf.setFont('', 'bold');
-    pdf.text('Reporte de Insights - Pocopán Juguetería', margin, yPosition);
+    pdf.text(`Reporte de Insights - ${tenantName || 'Sistema Central'}`, margin, yPosition);
     yPosition += 12;
 
     pdf.setFontSize(10);
@@ -172,7 +151,9 @@ export const importExportService = {
     addText('Promedio Diario', `$${avgDaily.toFixed(2)}`);
 
     addSection('Ventas por Negocio');
-    for (let posNum = 1; posNum <= 3; posNum++) {
+    const posNumbersInSales = Array.from(new Set(allSales.map(s => s.pos_number))).sort((a, b) => a - b);
+    
+    for (let posNum of posNumbersInSales) {
       const posSales = allSales.filter((s) => s.pos_number === posNum);
       if (posSales.length === 0) continue;
 
@@ -191,7 +172,7 @@ export const importExportService = {
       pdf.setFontSize(12);
       pdf.setFont('', 'bold');
       pdf.setTextColor(230, 126, 34);
-      pdf.text(`${POS_NAMES[posNum] || `POS ${posNum}`}`, margin + 3, yPosition);
+      pdf.text(`${posNames[posNum] || `POS ${posNum}`}`, margin + 3, yPosition);
       pdf.setTextColor(0, 0, 0);
       yPosition += 6;
 
@@ -202,17 +183,23 @@ export const importExportService = {
       yPosition += 2;
     }
 
-    addSection('Ventas por Día (Últimos 200 días)');
+    addSection('Ventas por Día (Últimos días)');
     if (salesPerDay.length > 0) {
       pdf.setFontSize(9);
-      const columnWidth = (pageWidth - 2 * margin) / 5;
-      const tableData = salesPerDay.slice(-30).map((day) => [
-        day.date,
-        `$${day.total.toFixed(0)}`,
-        `$${day.pos1.toFixed(0)}`,
-        `$${day.pos2.toFixed(0)}`,
-        `$${day.pos3.toFixed(0)}`,
-      ]);
+      const recentSales = salesPerDay.slice(-30);
+      
+      // Dynamic columns based on POS in recent sales
+      const posInRecent = new Set<number>();
+      recentSales.forEach(day => {
+        Object.keys(day).forEach(key => {
+          if (key.startsWith('pos')) {
+            posInRecent.add(Number(key.replace('pos', '')));
+          }
+        });
+      });
+      const sortedPosInRecent = Array.from(posInRecent).sort((a, b) => a - b);
+      const numCols = 2 + sortedPosInRecent.length;
+      const columnWidth = (pageWidth - 2 * margin) / numCols;
 
       if (yPosition > 200) {
         pdf.addPage();
@@ -221,78 +208,68 @@ export const importExportService = {
 
       pdf.setFont('', 'bold');
       pdf.text('Fecha', margin, yPosition);
-      pdf.text('Total Redes', margin + columnWidth, yPosition);
-      pdf.text('Costa del Este', margin + columnWidth * 2, yPosition);
-      pdf.text('Mar de las Pampas', margin + columnWidth * 3, yPosition);
-      pdf.text('Costa Esmeralda', margin + columnWidth * 4, yPosition);
+      pdf.text('Total', margin + columnWidth, yPosition);
+      sortedPosInRecent.forEach((posNum, idx) => {
+        pdf.text(posNames[posNum] || `POS ${posNum}`, margin + columnWidth * (2 + idx), yPosition);
+      });
       yPosition += 5;
 
       pdf.setFont('', 'normal');
-      tableData.forEach((row) => {
+      recentSales.forEach((day) => {
         if (yPosition > 270) {
           pdf.addPage();
           yPosition = 10;
         }
-        pdf.text(row[0], margin, yPosition);
-        pdf.text(row[1], margin + columnWidth, yPosition);
-        pdf.text(row[2], margin + columnWidth * 2, yPosition);
-        pdf.text(row[3], margin + columnWidth * 3, yPosition);
-        pdf.text(row[4], margin + columnWidth * 4, yPosition);
+        pdf.text(day.date, margin, yPosition);
+        pdf.text(`$${day.total.toFixed(0)}`, margin + columnWidth, yPosition);
+        sortedPosInRecent.forEach((posNum, idx) => {
+          const val = day[`pos${posNum}`] || 0;
+          pdf.text(`$${val.toFixed(0)}`, margin + columnWidth * (2 + idx), yPosition);
+        });
         yPosition += 5;
       });
     }
 
-    addSection('Top 20 Productos por Punto de Venta');
-    const columnWidth = (pageWidth - 2 * margin) / 3;
+    addSection('Top Productos por Punto de Venta');
+    const prodColWidth = (pageWidth - 2 * margin) / 3;
 
-    for (let pageIdx = 0; pageIdx < 2; pageIdx++) {
-      if (yPosition > 50) {
+    for (let posNum of posNumbersInSales) {
+      const topPosProducts = getTopProductsPerPOS(posNum, 10);
+      if (topPosProducts.length === 0) continue;
+
+      if (yPosition > 230) {
         pdf.addPage();
         yPosition = 10;
       }
 
-      const posNumbers = pageIdx === 0 ? [1, 2] : [3];
+      pdf.setFontSize(11);
+      pdf.setFont('', 'bold');
+      pdf.setTextColor(230, 126, 34);
+      pdf.text(posNames[posNum] || `POS ${posNum}`, margin, yPosition);
+      pdf.setTextColor(0, 0, 0);
+      yPosition += 6;
 
-      for (let posNum of posNumbers) {
-        const posName = POS_NAMES[posNum] || `POS ${posNum}`;
-        const topPosProducts = getTopProductsPerPOS(posNum, 20);
+      pdf.setFontSize(8);
+      pdf.setFont('', 'bold');
+      pdf.text('Producto', margin, yPosition);
+      pdf.text('Cant.', margin + prodColWidth * 1.5, yPosition);
+      pdf.text('Ingresos', margin + prodColWidth * 2.2, yPosition);
+      yPosition += 4;
 
-        if (topPosProducts.length === 0) continue;
-
-        if (yPosition > 250) {
+      pdf.setFont('', 'normal');
+      topPosProducts.forEach((p: any) => {
+        if (yPosition > 270) {
           pdf.addPage();
           yPosition = 10;
         }
-
-        pdf.setFontSize(11);
-        pdf.setFont('', 'bold');
-        pdf.setTextColor(230, 126, 34);
-        pdf.text(posName, margin, yPosition);
-        pdf.setTextColor(0, 0, 0);
-        yPosition += 6;
-
-        pdf.setFontSize(8);
-        pdf.setFont('', 'bold');
-        pdf.text('Producto', margin, yPosition);
-        pdf.text('Cant.', margin + columnWidth * 0.7, yPosition);
-        pdf.text('Ingresos', margin + columnWidth * 1.2, yPosition);
+        const productText = p.name.substring(0, 45);
+        pdf.text(productText, margin, yPosition);
+        pdf.text(p.quantity.toString(), margin + prodColWidth * 1.5, yPosition);
+        pdf.text(`$${p.revenue.toFixed(0)}`, margin + prodColWidth * 2.2, yPosition);
         yPosition += 4;
+      });
 
-        pdf.setFont('', 'normal');
-        topPosProducts.forEach((p: any) => {
-          if (yPosition > 270) {
-            pdf.addPage();
-            yPosition = 10;
-          }
-          const productText = p.name.substring(0, 35);
-          pdf.text(productText, margin, yPosition);
-          pdf.text(p.quantity.toString(), margin + columnWidth * 0.7, yPosition);
-          pdf.text(`$${p.revenue.toFixed(0)}`, margin + columnWidth * 1.2, yPosition);
-          yPosition += 4;
-        });
-
-        yPosition += 3;
-      }
+      yPosition += 5;
     }
 
     pdf.save(`insights_${new Date().toISOString().split('T')[0]}.pdf`);

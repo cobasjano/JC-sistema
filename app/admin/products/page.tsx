@@ -11,7 +11,7 @@ import { Product, PurchaseRecord } from '@/lib/types';
 
 export default function ProductsPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, tenant } = useAuthStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -50,10 +50,11 @@ export default function ProductsPage() {
     }
 
     const fetchData = async () => {
+      if (!user) return;
       const [productsData, categoriesData, purchasesData] = await Promise.all([
-        productService.getAll(),
-        productService.getCategories(),
-        purchaseService.getAllPurchases(),
+        productService.getAll(user.tenant_id),
+        productService.getCategories(user.tenant_id),
+        purchaseService.getAllPurchases(user.tenant_id),
       ]);
       setProducts(productsData);
       setCategories(categoriesData);
@@ -66,8 +67,8 @@ export default function ProductsPage() {
 
   useEffect(() => {
     const fetchSubcategories = async () => {
-      if (selectedCategory) {
-        const subcats = await productService.getSubcategories(selectedCategory);
+      if (selectedCategory && user) {
+        const subcats = await productService.getSubcategories(selectedCategory, user.tenant_id);
         setSubcategories(subcats);
         setSelectedSubcategory('');
       } else {
@@ -76,10 +77,11 @@ export default function ProductsPage() {
     };
 
     fetchSubcategories();
-  }, [selectedCategory]);
+  }, [selectedCategory, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
 
     const productData = {
       name: formData.name,
@@ -89,10 +91,11 @@ export default function ProductsPage() {
       subcategory: formData.subcategory || undefined,
       image_url: formData.image_url,
       stock: 0,
+      tenant_id: user.tenant_id,
     };
 
     if (editingId) {
-      const result = await productService.update(editingId, productData);
+      const result = await productService.update(editingId, user.tenant_id, productData);
       if (result) {
         setProducts(products.map((p) => (p.id === editingId ? result : p)));
         setEditingId(null);
@@ -122,8 +125,9 @@ export default function ProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!user) return;
     if (confirm('¿Estás seguro de que deseas eliminar este producto?')) {
-      const success = await productService.delete(id);
+      const success = await productService.delete(id, user.tenant_id);
       if (success) {
         setProducts(products.filter((p) => p.id !== id));
       }
@@ -137,7 +141,8 @@ export default function ProductsPage() {
   };
 
   const handleDeleteAllCatalog = async () => {
-    const CORRECT_PASSWORD = 'laviudanegradebernal1994';
+    if (!user || !tenant) return;
+    const CORRECT_PASSWORD = tenant.settings.delete_catalog_password || 'laviudanegradebernal1994';
 
     if (deletePassword !== CORRECT_PASSWORD) {
       setDeleteMessage('Contraseña incorrecta');
@@ -147,7 +152,7 @@ export default function ProductsPage() {
     try {
       let successCount = 0;
       for (const product of products) {
-        const success = await productService.delete(product.id);
+        const success = await productService.delete(product.id, user.tenant_id);
         if (success) successCount++;
       }
 
@@ -163,6 +168,7 @@ export default function ProductsPage() {
   };
 
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -180,11 +186,14 @@ export default function ProductsPage() {
 
       let successCount = 0;
       for (const product of importedProducts) {
-        const result = await productService.create(product);
+        const result = await productService.create({
+          ...product,
+          tenant_id: user.tenant_id
+        });
         if (result) successCount++;
       }
 
-      const allProducts = await productService.getAll();
+      const allProducts = await productService.getAll(user.tenant_id);
       setProducts(allProducts);
 
       setImportMessage(`${successCount} productos importados correctamente`);
@@ -198,9 +207,10 @@ export default function ProductsPage() {
   };
 
   const handleExportExcel = async () => {
+    if (!user) return;
     setExporting(true);
     try {
-      const allProducts = await productService.getAll();
+      const allProducts = await productService.getAll(user.tenant_id);
       await importExportService.exportProductsToExcel(allProducts);
     } catch (error) {
       console.error('Error al exportar:', error);
@@ -210,6 +220,7 @@ export default function ProductsPage() {
   };
 
   const handleAddPurchase = async () => {
+    if (!user) return;
     if (!selectedProductForPurchase || !purchaseData.quantity || !purchaseData.purchasePrice) {
       setPurchaseMessage('Por favor completa todos los campos');
       return;
@@ -223,6 +234,7 @@ export default function ProductsPage() {
           productId: selectedProductForPurchase,
           quantity: parseInt(purchaseData.quantity),
           purchasePrice: parseFloat(purchaseData.purchasePrice),
+          tenant_id: user.tenant_id,
         }),
       });
 

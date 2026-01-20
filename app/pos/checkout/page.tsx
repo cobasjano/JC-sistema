@@ -41,9 +41,9 @@ export default function CheckoutPage() {
   }, [user, router, items]);
 
   useEffect(() => {
-    if (user?.pos_number === 3 && customerSearch.length >= 2) {
+    if (user && customerSearch.length >= 2) {
       const delayDebounceFn = setTimeout(async () => {
-        const results = await customerService.search(customerSearch, 3);
+        const results = await customerService.search(customerSearch, user.tenant_id, user.pos_number);
         setCustomers(results);
         setShowCustomerDropdown(true);
       }, 300);
@@ -181,66 +181,64 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {user?.pos_number === 3 && (
-          <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow mb-6">
-            <h2 className="text-lg sm:text-xl font-bold mb-4 text-gray-900 dark:text-white">Asignar Cliente</h2>
-            <div className="relative">
-              {selectedCustomer ? (
-                <div className="flex items-center justify-between p-4 bg-orange-50 rounded-xl border border-orange-200">
-                  <div>
-                    <p className="font-bold text-orange-900">{selectedCustomer.full_name}</p>
-                    <p className="text-xs text-orange-700">{selectedCustomer.phone_number}</p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedCustomer(null)}
-                    className="text-orange-500 hover:text-orange-700 font-bold text-sm"
-                  >
-                    Quitar
-                  </button>
+        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow mb-6">
+          <h2 className="text-lg sm:text-xl font-bold mb-4 text-gray-900 dark:text-white">Asignar Cliente (Opcional)</h2>
+          <div className="relative">
+            {selectedCustomer ? (
+              <div className="flex items-center justify-between p-4 bg-orange-50 rounded-xl border border-orange-200">
+                <div>
+                  <p className="font-bold text-orange-900">{selectedCustomer.full_name}</p>
+                  <p className="text-xs text-orange-700">{selectedCustomer.phone_number}</p>
                 </div>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    placeholder="Buscar cliente por nombre o teléfono..."
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500 bg-gray-50 dark:bg-gray-900"
-                  />
-                  {showCustomerDropdown && customers.length > 0 && (
-                    <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-60 overflow-y-auto">
-                      {customers.map((c) => (
-                        <button
-                          key={c.id}
-                          onClick={() => {
-                            setSelectedCustomer(c);
-                            setShowCustomerDropdown(false);
-                            setCustomerSearch('');
-                          }}
-                          className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b last:border-0"
-                        >
-                          <p className="font-bold text-sm">{c.full_name}</p>
-                          <p className="text-xs text-gray-500">{c.phone_number}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {showCustomerDropdown && customers.length === 0 && customerSearch.length >= 2 && (
-                    <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4 text-center">
-                      <p className="text-sm text-gray-500 italic mb-3">No se encontraron resultados</p>
+                <button
+                  onClick={() => setSelectedCustomer(null)}
+                  className="text-orange-500 hover:text-orange-700 font-bold text-sm"
+                >
+                  Quitar
+                </button>
+              </div>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  placeholder="Buscar cliente por nombre o teléfono..."
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-orange-500 bg-gray-50 dark:bg-gray-900"
+                />
+                {showCustomerDropdown && customers.length > 0 && (
+                  <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                    {customers.map((c) => (
                       <button
-                        onClick={() => router.push('/pos/customers')}
-                        className="text-orange-500 font-bold text-xs uppercase tracking-widest"
+                        key={c.id}
+                        onClick={() => {
+                          setSelectedCustomer(c);
+                          setShowCustomerDropdown(false);
+                          setCustomerSearch('');
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b last:border-0"
                       >
-                        + Ir a Clientes
+                        <p className="font-bold text-sm">{c.full_name}</p>
+                        <p className="text-xs text-gray-500">{c.phone_number}</p>
                       </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+                {showCustomerDropdown && customers.length === 0 && customerSearch.length >= 2 && (
+                  <div className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-4 text-center">
+                    <p className="text-sm text-gray-500 italic mb-3">No se encontraron resultados</p>
+                    <button
+                      onClick={() => router.push('/pos/customers')}
+                      className="text-orange-500 font-bold text-xs uppercase tracking-widest"
+                    >
+                      + Ir a Clientes
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        )}
+        </div>
 
         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow mb-6">
           <h2 className="text-lg sm:text-xl font-bold mb-4 text-gray-900 dark:text-white">Método de pago</h2>

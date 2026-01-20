@@ -1,17 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { useAuthStore } from '@/lib/store';
 import { Expense, ExpenseCategory, ExpenseItem, Product } from '@/lib/types';
 import { productService } from '@/lib/services/products';
-
-const POS_OPTIONS = [
-  { id: 1, name: 'Costa del Este' },
-  { id: 2, name: 'Mar de las Pampas' },
-  { id: 3, name: 'Costa Esmeralda' },
-];
 
 const CATEGORIES: ExpenseCategory[] = ['Compra de Inventario', 'Expensas', 'Luz', 'Internet', 'Agua', 'Otros'];
 
@@ -26,12 +20,20 @@ interface FormItem extends ExpenseItem {
 export default function EditExpensePage() {
   const router = useRouter();
   const params = useParams();
-  const { user } = useAuthStore();
+  const { user, tenant } = useAuthStore();
   const [expense, setExpense] = useState<Expense | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  
+  const POS_OPTIONS = useMemo(() => {
+    if (!tenant) return [];
+    return Object.entries(tenant.settings.pos_names).map(([id, name]) => ({
+      id: parseInt(id),
+      name
+    }));
+  }, [tenant]);
   
   // Form fields
   const [category, setCategory] = useState<ExpenseCategory>('Compra de Inventario');
@@ -56,21 +58,25 @@ export default function EditExpensePage() {
     }
 
     const init = async () => {
-      await loadProducts();
-      await fetchExpense();
+      if (user) {
+        await loadProducts();
+        await fetchExpense();
+      }
     };
     
     init();
   }, [user, router, expenseId]);
 
   const loadProducts = async () => {
-    const prods = await productService.getAll();
+    if (!user) return;
+    const prods = await productService.getAll(user.tenant_id);
     setProducts(prods);
   };
 
   const fetchExpense = async () => {
+    if (!user) return;
     try {
-      const response = await fetch(`/api/expenses/${expenseId}`);
+      const response = await fetch(`/api/expenses/${expenseId}?tenant_id=${user.tenant_id}`);
       if (response.ok) {
         const data: Expense = await response.json();
         setExpense(data);
@@ -254,7 +260,7 @@ export default function EditExpensePage() {
 
       console.log('Update payload:', updatePayload);
 
-      const response = await fetch(`/api/expenses/${expenseId}`, {
+      const response = await fetch(`/api/expenses/${expenseId}?tenant_id=${user?.tenant_id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatePayload),

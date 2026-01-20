@@ -4,6 +4,7 @@ import { PurchaseRecord } from '@/lib/types';
 export const purchaseService = {
   async createPurchase(
     productId: string,
+    tenantId: string,
     quantity: number,
     purchasePrice: number,
     notes?: string
@@ -20,6 +21,7 @@ export const purchaseService = {
         .insert([
           {
             product_id: productId,
+            tenant_id: tenantId,
             quantity,
             purchase_price: purchasePrice,
             total_cost: totalCost,
@@ -39,12 +41,13 @@ export const purchaseService = {
     }
   },
 
-  async getPurchasesByProduct(productId: string): Promise<PurchaseRecord[]> {
+  async getPurchasesByProduct(productId: string, tenantId: string): Promise<PurchaseRecord[]> {
     try {
       const { data, error } = await supabase
         .from('purchase_records')
         .select('*')
         .eq('product_id', productId)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -57,11 +60,12 @@ export const purchaseService = {
     }
   },
 
-  async getAllPurchases(): Promise<PurchaseRecord[]> {
+  async getAllPurchases(tenantId: string): Promise<PurchaseRecord[]> {
     try {
       const { data, error } = await supabase
         .from('purchase_records')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -74,12 +78,13 @@ export const purchaseService = {
     }
   },
 
-  async deletePurchase(id: string): Promise<boolean> {
+  async deletePurchase(id: string, tenantId: string): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('purchase_records')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
 
       if (error) {
         return false;

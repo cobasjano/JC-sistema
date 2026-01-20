@@ -3,9 +3,9 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
-    const { productId, quantity, purchasePrice, notes } = await request.json();
+    const { productId, quantity, purchasePrice, notes, tenant_id } = await request.json();
 
-    if (!productId || !quantity || !purchasePrice) {
+    if (!productId || !quantity || !purchasePrice || !tenant_id) {
       return NextResponse.json(
         { error: 'Datos incompletos' },
         { status: 400 }
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       .from('products')
       .select('id')
       .eq('id', productId)
+      .eq('tenant_id', tenant_id)
       .single();
 
     if (!product) {
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest) {
       .insert([
         {
           product_id: productId,
+          tenant_id: tenant_id,
           quantity,
           purchase_price: purchasePrice,
           total_cost: totalCost,
@@ -75,8 +77,16 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const productId = request.nextUrl.searchParams.get('productId');
+    const tenantId = request.nextUrl.searchParams.get('tenant_id');
 
-    let query = supabaseAdmin.from('purchase_records').select('*');
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID es requerido' },
+        { status: 400 }
+      );
+    }
+
+    let query = supabaseAdmin.from('purchase_records').select('*').eq('tenant_id', tenantId);
 
     if (productId) {
       query = query.eq('product_id', productId);

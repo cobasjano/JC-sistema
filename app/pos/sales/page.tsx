@@ -12,7 +12,7 @@ import * as XLSX from 'xlsx';
 
 export default function SalesHistoryPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, tenant } = useAuthStore();
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -29,7 +29,7 @@ export default function SalesHistoryPage() {
     }
 
     const fetchSales = async () => {
-      const data = await salesService.getSalesByPos(user.id);
+      const data = await salesService.getSalesByPos(user.id, user.tenant_id);
       setSales(data);
       setLoading(false);
     };
@@ -38,17 +38,18 @@ export default function SalesHistoryPage() {
   }, [user, router]);
 
   const handleDeleteSale = async () => {
-    const CORRECT_PASSWORD = '1004';
+    if (!user || !tenant) return;
+    const CORRECT_PASSWORD = tenant.settings.delete_sale_password || '1004';
 
     if (deletePassword !== CORRECT_PASSWORD) {
       setDeleteMessage('Contraseña incorrecta');
       return;
     }
 
-    if (!selectedSaleId) return;
+    if (!selectedSaleId || !user) return;
 
     try {
-      const success = await salesService.deleteSale(selectedSaleId);
+      const success = await salesService.deleteSale(selectedSaleId, user.tenant_id);
       if (success) {
         setSales(sales.filter((sale) => sale.id !== selectedSaleId));
         setShowDeleteModal(false);
@@ -67,7 +68,7 @@ export default function SalesHistoryPage() {
     if (!user) return;
     setExportingProducts(true);
     try {
-      const productsByCategory = await salesService.getAllProductsSoldByPos(user.id, exportFromDate || undefined);
+      const productsByCategory = await salesService.getAllProductsSoldByPos(user.id, user.tenant_id, exportFromDate || undefined);
       
       const workbook = XLSX.utils.book_new();
       

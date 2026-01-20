@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { useAuthStore } from '@/lib/store';
 import { salesService } from '@/lib/services/sales';
-import { POSDashboardStats, Sale } from '@/lib/types';
+import { weatherService, DayWeatherDetail } from '@/lib/services/weather';
+import { POSDashboardStats, Sale, TenantSettings } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -14,15 +15,6 @@ interface HourlyData {
   total: number;
   percentage: number;
   sales_count: number;
-}
-
-interface DayWeatherDetail {
-  date: string;
-  morning: string;
-  afternoon: string;
-  evening: string;
-  summary: string;
-  hasVariation: boolean;
 }
 
 interface WeatherSalesData {
@@ -34,149 +26,6 @@ interface PaymentSalesData {
   name: string;
   value: number;
   [key: string]: string | number;
-}
-
-const LOCATION_COORDINATES: Record<number, { lat: number; lon: number }> = {
-  1: { lat: -34.5371, lon: -56.4237 },
-  2: { lat: -36.7961, lon: -56.8997 },
-  3: { lat: -36.5275, lon: -56.7586 },
-};
-
-const WEATHER_CODES: Record<number, string> = {
-  0: 'Despejado',
-  1: 'Parcialmente nublado',
-  2: 'Nublado',
-  3: 'Nublado',
-  45: 'Neblina',
-  48: 'Neblina',
-  51: 'Lluvia ligera',
-  53: 'Lluvia',
-  55: 'Lluvia fuerte',
-  61: 'Lluvia',
-  63: 'Lluvia',
-  65: 'Lluvia fuerte',
-  80: 'Lluvia',
-  81: 'Lluvia',
-  82: 'Lluvia fuerte',
-};
-
-async function fetchHourlyWeather(latitude: number, longitude: number, days: number = 200) {
-  try {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = new Date().toISOString().split('T')[0];
-
-    const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${startStr}&end_date=${endStr}&hourly=weather_code,precipitation&timezone=America/Argentina/Buenos_Aires`;
-    
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Weather API error');
-    
-    const data = await response.json();
-    return {
-      times: data.hourly.time,
-      codes: data.hourly.weather_code,
-      precipitation: data.hourly.precipitation
-    };
-  } catch (error) {
-    console.error('Error fetching weather:', error);
-    return null;
-  }
-}
-
-function getWeatherSummaryForDay(times: string[], codes: number[], precipitation: number[], date: string): DayWeatherDetail {
-  const dayStart = new Date(date);
-  const dayEnd = new Date(date);
-  dayEnd.setDate(dayEnd.getDate() + 1);
-
-  const dayIndices = times
-    .map((time, idx) => {
-      const t = new Date(time);
-      return t >= dayStart && t < dayEnd ? idx : -1;
-    })
-    .filter(idx => idx !== -1);
-
-  if (dayIndices.length === 0) {
-    return {
-      date,
-      morning: 'N/D',
-      afternoon: 'N/D',
-      evening: 'N/D',
-      summary: 'Sin datos',
-      hasVariation: false
-    };
-  }
-
-  const getMostCommonWeather = (indices: number[]) => {
-    const codes_in_range = indices.map(i => codes[i] || 0);
-    const hasRain = indices.some(i => precipitation[i] > 0.1);
-    
-    if (hasRain) return 'Lluvia';
-    const mostCommon = codes_in_range[0];
-    return WEATHER_CODES[mostCommon] || 'Desconocido';
-  };
-
-  const morningIndices = dayIndices.filter(idx => {
-    const h = new Date(times[idx]).getHours();
-    return h >= 6 && h < 12;
-  });
-
-  const afternoonIndices = dayIndices.filter(idx => {
-    const h = new Date(times[idx]).getHours();
-    return h >= 12 && h < 18;
-  });
-
-  const eveningIndices = dayIndices.filter(idx => {
-    const h = new Date(times[idx]).getHours();
-    return h >= 18 || h < 6;
-  });
-
-  const morning = morningIndices.length > 0 ? getMostCommonWeather(morningIndices) : 'N/D';
-  const afternoon = afternoonIndices.length > 0 ? getMostCommonWeather(afternoonIndices) : 'N/D';
-  const evening = eveningIndices.length > 0 ? getMostCommonWeather(eveningIndices) : 'N/D';
-
-  const conditions = [morning, afternoon, evening].filter(c => c !== 'N/D');
-  const hasVariation = new Set(conditions).size > 1;
-  
-  const summary = hasVariation 
-    ? `Mañana: ${morning}, Tarde: ${afternoon}, Noche: ${evening}`
-    : morning;
-
-  return {
-    date,
-    morning,
-    afternoon,
-    evening,
-    summary,
-    hasVariation
-  };
-}
-
-async function getWeatherByPos(posNumber: number, days: number = 200): Promise<Record<string, DayWeatherDetail>> {
-  const coords = LOCATION_COORDINATES[posNumber];
-  if (!coords) return {};
-
-  const weatherData = await fetchHourlyWeather(coords.lat, coords.lon, days);
-  if (!weatherData) return {};
-
-  const result: Record<string, DayWeatherDetail> = {};
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
-
-  for (let i = 0; i < days; i++) {
-    const d = new Date(startDate);
-    d.setDate(d.getDate() + i);
-    const dateStr = d.toISOString().split('T')[0];
-    
-    result[dateStr] = getWeatherSummaryForDay(
-      weatherData.times,
-      weatherData.codes,
-      weatherData.precipitation,
-      dateStr
-    );
-  }
-
-  return result;
 }
 
 function getSalesByWeatherAndHour(
@@ -230,7 +79,7 @@ function getSalesByPaymentMethod(sales: any[]): PaymentSalesData[] {
 
 export default function StatsPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, tenant } = useAuthStore();
   const [stats, setStats] = useState<POSDashboardStats | null>(null);
   const [salesPerDay, setSalesPerDay] = useState<Array<{ date: string; total: number }>>([]);
   const [salesPerHour, setSalesPerHour] = useState<HourlyData[]>([]);
@@ -239,7 +88,7 @@ export default function StatsPage() {
   const [salesByPayment, setSalesByPayment] = useState<PaymentSalesData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const getSalesPerHour = async (posNumber: number, days = 30) => {
+  const getSalesPerHour = async (posNumber: number, tenantId: string, days = 30) => {
     try {
       const now = new Date();
       const argentinaTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
@@ -251,6 +100,7 @@ export default function StatsPage() {
         .from('sales')
         .select('total, created_at')
         .eq('pos_number', posNumber)
+        .eq('tenant_id', tenantId)
         .gte('created_at', startDate.toISOString());
 
       if (error || !sales) {
@@ -325,21 +175,22 @@ export default function StatsPage() {
   };
 
   useEffect(() => {
-    if (!user || user.role !== 'pos') {
+    if (!user || user.role !== 'pos' || !tenant) {
       router.push('/');
       return;
     }
 
     const fetchStats = async () => {
-      const data = await salesService.getPosDashboard(user.id, user.pos_number || 0);
-      const perDay = await salesService.getSalesByDayAndPos(user.pos_number || 0, 200);
-      const perHour = await getSalesPerHour(user.pos_number || 0, 30);
-      const weather = await getWeatherByPos(user.pos_number || 0, 200);
+      const data = await salesService.getPosDashboard(user.id, user.pos_number || 0, user.tenant_id, tenant.settings);
+      const perDay = await salesService.getSalesByDayAndPos(user.pos_number || 0, user.tenant_id, 200);
+      const perHour = await getSalesPerHour(user.pos_number || 0, user.tenant_id, 30);
+      const weather = await weatherService.getWeatherHistoryByPos(user.pos_number || 0, tenant.settings, 200);
       
       const { data: sales, error } = await supabase
         .from('sales')
         .select('total, payment_method, payment_breakdown, created_at')
-        .eq('pos_number', user.pos_number || 0);
+        .eq('pos_number', user.pos_number || 0)
+        .eq('tenant_id', user.tenant_id);
       
       if (!error && sales) {
         setSalesByWeather(getSalesByWeatherAndHour(sales, weather));
@@ -354,7 +205,7 @@ export default function StatsPage() {
     };
 
     fetchStats();
-  }, [user, router]);
+  }, [user, router, tenant]);
 
   if (!user) {
     return null;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
@@ -9,15 +9,10 @@ import { Expense, ExpenseCategory } from '@/lib/types';
 
 const CATEGORIES: ExpenseCategory[] = ['Compra de Inventario', 'Expensas', 'Luz', 'Internet', 'Agua', 'Otros'];
 const STATUS_OPTIONS = ['pendiente', 'aprobado', 'rechazado'] as const;
-const POS_OPTIONS = [
-  { id: 1, name: 'Costa del Este' },
-  { id: 2, name: 'Mar de las Pampas' },
-  { id: 3, name: 'Costa Esmeralda' },
-];
 
 export default function ExpensesPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, tenant } = useAuthStore();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('');
@@ -25,6 +20,14 @@ export default function ExpensesPage() {
   const [filterPos, setFilterPos] = useState<string>('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const POS_OPTIONS = useMemo(() => {
+    if (!tenant) return [];
+    return Object.entries(tenant.settings.pos_names).map(([id, name]) => ({
+      id: parseInt(id),
+      name
+    }));
+  }, [tenant]);
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -36,9 +39,11 @@ export default function ExpensesPage() {
   }, [user, router, filterStatus, filterCategory, filterPos]);
 
   const fetchExpenses = async () => {
+    if (!user) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      params.append('tenant_id', user.tenant_id);
       if (filterStatus) params.append('status', filterStatus);
       if (filterCategory) params.append('category', filterCategory);
       if (filterPos) params.append('posNumber', filterPos);
@@ -55,9 +60,10 @@ export default function ExpensesPage() {
   };
 
   const handleStatusUpdate = async (expenseId: string, newStatus: string) => {
+    if (!user) return;
     setUpdatingId(expenseId);
     try {
-      const response = await fetch(`/api/expenses/${expenseId}`, {
+      const response = await fetch(`/api/expenses/${expenseId}?tenant_id=${user.tenant_id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -78,13 +84,13 @@ export default function ExpensesPage() {
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
+    if (!user || !confirm('¿Estás seguro de que deseas eliminar este gasto?')) {
       return;
     }
 
     setUpdatingId(expenseId);
     try {
-      const response = await fetch(`/api/expenses/${expenseId}`, {
+      const response = await fetch(`/api/expenses/${expenseId}?tenant_id=${user.tenant_id}`, {
         method: 'DELETE',
       });
 
@@ -103,6 +109,7 @@ export default function ExpensesPage() {
   };
 
   const handleToggleCheckPayment = async (expenseId: string, currentStatus: string, checkDate?: string) => {
+    if (!user) return;
     setUpdatingId(expenseId);
     try {
       let newPaymentStatus: 'paid' | 'unpaid' = 'paid';
@@ -117,7 +124,7 @@ export default function ExpensesPage() {
         newPaymentStatus = 'paid';
       }
 
-      const response = await fetch(`/api/expenses/${expenseId}`, {
+      const response = await fetch(`/api/expenses/${expenseId}?tenant_id=${user.tenant_id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, CartItem } from './types';
+import { User, CartItem, Tenant } from './types';
 
 interface AuthState {
   user: User | null;
+  tenant: Tenant | null;
   token: string | null;
   setUser: (user: User | null) => void;
+  setTenant: (tenant: Tenant | null) => void;
   setToken: (token: string | null) => void;
   logout: () => void;
 }
@@ -23,10 +25,12 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
+      tenant: null,
       token: null,
       setUser: (user) => set({ user }),
+      setTenant: (tenant) => set({ tenant }),
       setToken: (token) => set({ token }),
-      logout: () => set({ user: null, token: null }),
+      logout: () => set({ user: null, tenant: null, token: null }),
     }),
     {
       name: 'auth-store',

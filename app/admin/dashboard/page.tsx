@@ -30,7 +30,7 @@ type DateRange = 'today' | '7days' | '30days' | 'month' | 'all';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, tenant } = useAuthStore();
   
   // State
   const [posStats, setPosStats] = useState<POSDashboardStats[]>([]);
@@ -43,28 +43,25 @@ export default function AdminDashboardPage() {
   const [exporting, setExporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedRange, setSelectedRange] = useState<DateRange>('all');
-  const [posWeather, setPosWeather] = useState<Record<number, WeatherCondition>>({
-    1: 'sunny',
-    2: 'sunny',
-    3: 'sunny'
-  });
+  const [posWeather, setPosWeather] = useState<Record<number, WeatherCondition>>({});
 
-  // Fetch real weather for all POS
+  // Fetch real weather for all POS defined in tenant settings
   useEffect(() => {
+    if (!tenant) return;
+
     const fetchAllWeather = async () => {
-      const results = await Promise.all([
-        weatherService.getCurrentWeather(1),
-        weatherService.getCurrentWeather(2),
-        weatherService.getCurrentWeather(3)
-      ]);
-      setPosWeather({
-        1: results[0],
-        2: results[1],
-        3: results[2]
-      });
+      const posNumbers = Object.keys(tenant.settings.pos_locations).map(Number);
+      const weatherData: Record<number, WeatherCondition> = {};
+      
+      await Promise.all(posNumbers.map(async (num) => {
+        const condition = await weatherService.getCurrentWeather(num, tenant.settings);
+        weatherData[num] = condition;
+      }));
+      
+      setPosWeather(weatherData);
     };
     fetchAllWeather();
-  }, []);
+  }, [tenant]);
 
   const currentForecast = useMemo(() => {
     // 1. Calculate general daily average
@@ -99,33 +96,45 @@ export default function AdminDashboardPage() {
     // If we have no history, we'll fall back to a 0 growth baseline instead of "utopian" numbers
     const historicalGrowth = globalAverage > 0 ? ((contextAverage / globalAverage) - 1) * 100 : 0;
 
-    // 5. Get the forecast using the calculated historical growth (using POS 3 as reference for global tip)
-    const forecast = predictionService.getForecast(3, posWeather[3], undefined, now);
+    // 5. Get the forecast using the calculated historical growth (using first POS as reference for global tip if available)
+    const firstPos = tenant ? Object.keys(tenant.settings.pos_names).map(Number)[0] : 1;
+    const forecast = predictionService.getForecast(
+      firstPos, 
+      posWeather[firstPos] || 'sunny', 
+      undefined, 
+      now, 
+      undefined, 
+      tenant?.settings?.seasonality_months
+    );
     
     // Override the "utopian" growth with the historical one
     return {
       ...forecast,
       growth: Math.round(historicalGrowth)
     };
-  }, [allSales, posWeather]);
+  }, [allSales, posWeather, tenant]);
 
-  // Commissions (editable in a real app, but for now we'll use defaults)
-  const COMMISSIONS = useMemo(() => ({
-    'Efectivo': 0,
-    'Transferencia': 0,
-    'QR': 0.008,
-    'Débito': 0.015,
-    'Crédito': 0.035,
-    'Mixto': 0.01
-  }), []);
+  // Commissions
+  const COMMISSIONS = useMemo(() => {
+    return tenant?.settings?.commissions || {
+      'Efectivo': 0,
+      'Transferencia': 0,
+      'QR': 0.008,
+      'Débito': 0.015,
+      'Crédito': 0.035,
+      'Mixto': 0.01
+    };
+  }, [tenant]);
 
   // Data Fetching
   const fetchStats = useCallback(async () => {
+    if (!user || !tenant) return;
+    
     const [sales, products, salesHistory, ranking] = await Promise.all([
-      salesService.getAllSales(10000),
-      productService.getAll(),
-      salesService.getSalesPerDay(200),
-      customerService.getRanking()
+      salesService.getAllSales(user.tenant_id, 10000),
+      productService.getAll(user.tenant_id),
+      salesService.getSalesPerDay(user.tenant_id, 200),
+      customerService.getRanking(user.tenant_id)
     ]);
     
     setAllSales(sales);
@@ -133,15 +142,16 @@ export default function AdminDashboardPage() {
     setTopCustomers(ranking.slice(0, 5));
     setLowStockProducts(products.filter(p => p.stock <= 5).sort((a, b) => a.stock - b.stock));
 
+    const posNumbers = Object.keys(tenant.settings.pos_names).map(Number);
     const posDataArray = [];
-    for (let i = 1; i <= 3; i++) {
-      const posData = await salesService.getPosDashboard(``, i);
+    for (const posNum of posNumbers) {
+      const posData = await salesService.getPosDashboard(``, posNum, user.tenant_id, tenant.settings);
       if (posData) posDataArray.push(posData);
     }
     setPosStats(posDataArray);
 
     try {
-      const expensesResponse = await fetch('/api/expenses');
+      const expensesResponse = await fetch(`/api/expenses?tenant_id=${user.tenant_id}`);
       if (expensesResponse.ok) {
         const expenses = await expensesResponse.json();
         const total = Array.isArray(expenses) ? expenses.reduce((sum, exp) => sum + (exp.total || 0), 0) : 0;
@@ -152,7 +162,7 @@ export default function AdminDashboardPage() {
     }
 
     setLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -164,7 +174,12 @@ export default function AdminDashboardPage() {
 
     const channel = supabase
       .channel('admin_dashboard_realtime')
-      .on('postgres_changes', { event: 'INSERT', table: 'sales', schema: 'public' }, (payload) => {
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        table: 'sales', 
+        schema: 'public',
+        filter: `tenant_id=eq.${user.tenant_id}`
+      }, (payload) => {
         setAllSales(prev => [payload.new as Sale, ...prev]);
       })
       .subscribe();
@@ -333,10 +348,10 @@ export default function AdminDashboardPage() {
   };
 
   const handleExportPDF = async () => {
-    if (!filteredStats) return;
+    if (!filteredStats || !tenant) return;
     setExporting(true);
     try {
-      await importExportService.exportInsightsToPDF(filteredStats, filteredSales, []);
+      await importExportService.exportInsightsToPDF(filteredStats, filteredSales, salesPerDay, tenant.settings, tenant.name);
     } catch (error) {
       console.error('Error al exportar PDF:', error);
     }
@@ -363,11 +378,19 @@ export default function AdminDashboardPage() {
             {/* Predictive & External Factors */}
             <div className="mt-6 flex flex-wrap gap-4">
               {/* Seasonality Factor */}
-              <div className={`px-4 py-2 rounded-2xl border flex items-center gap-3 transition-all ${(new Date().getMonth() === 0 || new Date().getMonth() === 1) ? 'bg-orange-50 border-orange-200 text-orange-700 shadow-sm' : 'bg-slate-50 border-slate-100 text-slate-400 opacity-50'}`}>
+              <div className={`px-4 py-2 rounded-2xl border flex items-center gap-3 transition-all ${
+                tenant?.settings?.seasonality_months?.includes(new Date().getMonth()) 
+                  ? 'bg-orange-50 border-orange-200 text-orange-700 shadow-sm' 
+                  : 'bg-slate-50 border-slate-100 text-slate-400 opacity-50'
+              }`}>
                 <span className="text-xl">☀️</span>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest">Temporada Alta</p>
-                  <p className="text-xs font-medium">{(new Date().getMonth() === 0 || new Date().getMonth() === 1) ? 'Mes Pico: Enero/Febrero - Demanda Máxima.' : 'Fuera de temporada estival.'}</p>
+                  <p className="text-xs font-medium">
+                    {tenant?.settings?.seasonality_months?.includes(new Date().getMonth()) 
+                      ? 'Mes Pico - Demanda Máxima.' 
+                      : 'Fuera de temporada pico.'}
+                  </p>
                 </div>
               </div>
 
@@ -389,20 +412,23 @@ export default function AdminDashboardPage() {
               </div>
 
               {/* Auto Weather Factor - Show for all POS */}
-              <div className="flex bg-white border border-slate-200 rounded-2xl shadow-sm divide-x divide-slate-100">
-                {[1, 2, 3].map((pos) => (
-                  <div key={pos} className="px-4 py-2 flex items-center gap-3">
-                    <span className="text-xl">
-                      {posWeather[pos] === 'sunny' ? '☀️' : posWeather[pos] === 'cloudy' ? '☁️' : '🌧️'}
-                    </span>
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-widest">POS {pos}</p>
-                      <p className="text-[10px] text-slate-500 font-medium">
-                        {posWeather[pos] === 'sunny' ? 'Despejado' : posWeather[pos] === 'cloudy' ? 'Nublado' : 'Lluvia'}
-                      </p>
+              <div className="flex bg-white border border-slate-200 rounded-2xl shadow-sm divide-x divide-slate-100 overflow-x-auto">
+                {tenant && Object.keys(tenant.settings.pos_names).map((posKey) => {
+                  const pos = Number(posKey);
+                  return (
+                    <div key={pos} className="px-4 py-2 flex items-center gap-3 shrink-0">
+                      <span className="text-xl">
+                        {posWeather[pos] === 'sunny' ? '☀️' : posWeather[pos] === 'cloudy' ? '☁️' : '🌧️'}
+                      </span>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest">{tenant.settings.pos_names[pos] || `POS ${pos}`}</p>
+                        <p className="text-[10px] text-slate-500 font-medium">
+                          {posWeather[pos] === 'sunny' ? 'Despejado' : posWeather[pos] === 'cloudy' ? 'Nublado' : 'Lluvia'}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Inflection Point */}
@@ -567,9 +593,21 @@ export default function AdminDashboardPage() {
                     }}
                   />
                   <Line type="monotone" dataKey="total" name="Ventas del Día" stroke="#ef7d1a" strokeWidth={3} dot={{ r: 4, fill: '#ef7d1a', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
-                  <Line type="monotone" dataKey="pos1" name="Costa del Este" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, fill: '#3b82f6' }} strokeDasharray="5 5" />
-                  <Line type="monotone" dataKey="pos2" name="Mar de las Pampas" stroke="#10b981" strokeWidth={2} dot={{ r: 3, fill: '#10b981' }} strokeDasharray="5 5" />
-                  <Line type="monotone" dataKey="pos3" name="Costa Esmeralda" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3, fill: '#8b5cf6' }} strokeDasharray="5 5" />
+                  {tenant && Object.keys(tenant.settings.pos_names).map((posKey, index) => {
+                    const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4'];
+                    return (
+                      <Line 
+                        key={posKey}
+                        type="monotone" 
+                        dataKey={`pos${posKey}`} 
+                        name={tenant.settings.pos_names[Number(posKey)]} 
+                        stroke={colors[index % colors.length]} 
+                        strokeWidth={2} 
+                        dot={{ r: 3, fill: colors[index % colors.length] }} 
+                        strokeDasharray="5 5" 
+                      />
+                    );
+                  })}
                 </LineChart>
               </ResponsiveContainer>
             </div>

@@ -10,23 +10,30 @@ import { weatherService, WeatherCondition } from '@/lib/services/weather';
 
 export function Navbar() {
   const router = useRouter();
-  const { user, token, logout } = useAuthStore();
+  const { user, tenant, token, logout } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [weather, setWeather] = useState<WeatherCondition>('sunny');
 
+  const activePos = useMemo(() => {
+    if (!user || !tenant) return 1;
+    if (user.role === 'admin') {
+      // For admin, use the first available POS in settings or default to 1
+      const posNumbers = Object.keys(tenant.settings.pos_names || {}).map(Number);
+      return posNumbers.length > 0 ? Math.min(...posNumbers) : 1;
+    }
+    return user.pos_number || 1;
+  }, [user, tenant]);
+
   useEffect(() => {
-    if (!user) return;
+    if (!user || !tenant) return;
     
-    // Fetch weather for the current POS or default to Costa Esmeralda (POS 3)
-    const pos = user.role === 'admin' ? 3 : (user.pos_number || 1);
-    weatherService.getCurrentWeather(pos).then(setWeather);
-  }, [user]);
+    weatherService.getCurrentWeather(activePos, tenant.settings).then(setWeather);
+  }, [user, tenant, activePos]);
 
   const forecast = useMemo(() => {
-    if (!user) return null;
-    const pos = user.role === 'admin' ? 3 : (user.pos_number || 1);
-    return predictionService.getForecast(pos, weather);
-  }, [user, weather]);
+    if (!user || !tenant) return null;
+    return predictionService.getForecast(activePos, weather);
+  }, [user, tenant, weather, activePos]);
 
   const handleLogout = async () => {
     if (token) {
@@ -37,16 +44,19 @@ export function Navbar() {
   };
 
   const whatsappButtons = useMemo(() => {
-    if (!user || user.role === 'admin') return [];
+    if (!user || user.role === 'admin' || !tenant) return [];
     
-    const posContacts = [
-      { pos: 1, name: 'Costa del Este', phone: '5492257542170' },
-      { pos: 2, name: 'Mar de las Pampas', phone: '5492257542171' },
-      { pos: 3, name: 'Costa Esmeralda', phone: '5492257660073' },
-    ];
+    const settings = tenant.settings;
+    if (!settings.pos_phones || !settings.pos_names) return [];
 
-    return posContacts.filter(p => p.pos !== user.pos_number);
-  }, [user]);
+    return Object.entries(settings.pos_names)
+      .map(([pos, name]) => ({
+        pos: parseInt(pos),
+        name,
+        phone: settings.pos_phones?.[parseInt(pos)] || ''
+      }))
+      .filter(p => p.pos !== user.pos_number && p.phone);
+  }, [user, tenant]);
 
   if (!user) {
     return null;
@@ -61,7 +71,7 @@ export function Navbar() {
       ]
     : [
         { href: '/pos/catalog', label: 'Catálogo' },
-        ...(user.pos_number === 3 ? [{ href: '/pos/customers', label: 'Clientes' }] : []),
+        { href: '/pos/customers', label: 'Clientes' },
         { href: '/pos/sales', label: 'Historial' },
         { href: '/pos/stats', label: 'Estadísticas' }
       ];

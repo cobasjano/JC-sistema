@@ -9,7 +9,7 @@ import { Customer, CustomerRanking } from '@/lib/types';
 
 export default function CustomersPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, tenant } = useAuthStore();
   const [customers, setCustomers] = useState<CustomerRanking[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,24 +26,20 @@ export default function CustomersPage() {
       router.push('/');
       return;
     }
-    // Only POS 3 can access this for now as per requirement
-    if (user.pos_number !== 3) {
-      router.push('/pos/catalog');
-      return;
-    }
 
     const fetchCustomers = async () => {
       setLoading(true);
-      const data = await customerService.getRanking(3);
+      const data = await customerService.getRanking(user.tenant_id, user.pos_number);
       setCustomers(data);
       setLoading(false);
     };
 
     fetchCustomers();
-  }, [user, router]);
+  }, [user, router, tenant]);
 
-  const fetchCustomers = async () => {
-    const data = await customerService.getRanking(3);
+  const fetchCustomersData = async () => {
+    if (!user) return;
+    const data = await customerService.getRanking(user.tenant_id, user.pos_number);
     setCustomers(data);
   };
 
@@ -73,14 +69,15 @@ export default function CustomersPage() {
     const newCustomer = await customerService.create({
       full_name: fullName.trim(),
       phone_number: phoneNumber.trim(),
-      pos_number: 3
+      tenant_id: user.tenant_id,
+      pos_number: user.pos_number || 0
     });
 
     if (newCustomer) {
       setFullName('');
       setPhoneNumber('');
       setShowAddForm(false);
-      fetchCustomers();
+      fetchCustomersData();
     } else {
       setFormError('Error al crear cliente. El nombre o teléfono ya pueden existir.');
     }
@@ -94,7 +91,7 @@ export default function CustomersPage() {
     );
   }, [customers, searchTerm]);
 
-  if (!user || user.pos_number !== 3) return null;
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
@@ -102,8 +99,8 @@ export default function CustomersPage() {
       <div className="flex-1 p-4 sm:p-8 max-w-7xl mx-auto w-full">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Clientes - POS 3</h1>
-            <p className="text-gray-500 mt-1">Costa Esmeralda</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Clientes - {user.name || `POS ${user.pos_number}`}</h1>
+            <p className="text-gray-500 mt-1">{tenant?.name}</p>
           </div>
           <button
             onClick={() => setShowAddForm(true)}

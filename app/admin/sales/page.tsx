@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 
 export default function AdminSalesPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, tenant } = useAuthStore();
   const [sales, setSales] = useState<Sale[]>([]);
   const [customers, setCustomers] = useState<Record<string, Customer>>({});
   const [loading, setLoading] = useState(true);
@@ -28,8 +28,8 @@ export default function AdminSalesPage() {
     const fetchSales = async () => {
       setLoading(true);
       const [salesData, customersData] = await Promise.all([
-        salesService.getSalesByDate(selectedDate),
-        customerService.getAll()
+        salesService.getSalesByDate(selectedDate, user.tenant_id),
+        customerService.getAll(user.tenant_id)
       ]);
       
       setSales(salesData);
@@ -45,6 +45,14 @@ export default function AdminSalesPage() {
 
     fetchSales();
   }, [user, router, selectedDate]);
+
+  const posOptions = useMemo(() => {
+    if (!tenant) return [];
+    return Object.entries(tenant.settings.pos_names).map(([number, name]) => ({
+      value: number,
+      label: `POS ${number} - ${name}`
+    }));
+  }, [tenant]);
 
   const filteredSales = useMemo(() => {
     return sales.filter(sale => {
@@ -173,9 +181,11 @@ export default function AdminSalesPage() {
                 className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
               >
                 <option value="all">Todos los POS</option>
-                <option value="1">POS 1 - Costa del Este</option>
-                <option value="2">POS 2 - Mar de las Pampas</option>
-                <option value="3">POS 3 - Costa Esmeralda</option>
+                {posOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

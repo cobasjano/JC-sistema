@@ -3,11 +3,18 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const tenant_id = request.nextUrl.searchParams.get('tenant_id');
+
+  if (!tenant_id) {
+    return NextResponse.json({ error: 'tenant_id es requerido' }, { status: 400 });
+  }
+
   try {
     const { data, error } = await supabaseAdmin
       .from('expenses')
       .select('*')
       .eq('id', id)
+      .eq('tenant_id', tenant_id)
       .single();
 
     if (error) {
@@ -29,8 +36,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const tenant_id = request.nextUrl.searchParams.get('tenant_id');
+
+  if (!tenant_id) {
+    return NextResponse.json({ error: 'tenant_id es requerido' }, { status: 400 });
+  }
+
   try {
-    console.log(`Updating expense ${id}`);
+    console.log(`Updating expense ${id} for tenant ${tenant_id}`);
     const body = await request.json();
     console.log('Update body:', JSON.stringify(body));
     
@@ -79,6 +92,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .from('expenses')
       .update(updateData)
       .eq('id', id)
+      .eq('tenant_id', tenant_id)
       .select()
       .single();
 
@@ -104,11 +118,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const tenant_id = request.nextUrl.searchParams.get('tenant_id');
+
+  if (!tenant_id) {
+    return NextResponse.json({ error: 'tenant_id es requerido' }, { status: 400 });
+  }
+
   try {
     const { error } = await supabaseAdmin
       .from('expenses')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('tenant_id', tenant_id);
 
     if (error) {
       console.error('Supabase delete error:', error);

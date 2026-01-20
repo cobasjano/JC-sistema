@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { setUser, setToken } = useAuthStore();
+  const { setUser, setToken, setTenant } = useAuthStore();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +24,7 @@ export default function LoginPage() {
       if (result) {
         setUser(result.user);
         setToken(result.token);
+        setTenant(result.tenant);
 
         if (result.user.role === 'admin') {
           router.push('/admin/dashboard');

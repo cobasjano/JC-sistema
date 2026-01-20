@@ -3,9 +3,9 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
-    const { posId, posNumber, items, total, paymentMethod, paymentBreakdown, customerId } = await request.json();
+    const { posId, posNumber, items, total, paymentMethod, paymentBreakdown, customerId, tenant_id } = await request.json();
 
-    if (!posId || !items || !Array.isArray(items) || items.length === 0 || !total) {
+    if (!posId || !items || !Array.isArray(items) || items.length === 0 || !total || !tenant_id) {
       return NextResponse.json(
         { error: 'Datos incompletos o items inválidos' },
         { status: 400 }
@@ -93,7 +93,8 @@ export async function POST(request: NextRequest) {
         items,
         payment_method: paymentMethod,
         payment_breakdown: paymentBreakdown,
-        customer_id: customerId
+        customer_id: customerId,
+        tenant_id: tenant_id
       }])
       .select()
       .single();

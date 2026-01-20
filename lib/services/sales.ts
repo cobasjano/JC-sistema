@@ -1,15 +1,10 @@
 import { supabase } from '@/lib/supabase';
-import { Sale, SaleItem, DashboardStats, POSDashboardStats, PaymentMethod, PaymentBreakdown } from '@/lib/types';
-
-const POS_NAMES: Record<number, string> = {
-  1: 'Costa del Este',
-  2: 'Mar de las Pampas',
-  3: 'Costa Esmeralda',
-};
+import { Sale, SaleItem, DashboardStats, POSDashboardStats, PaymentMethod, PaymentBreakdown, TenantSettings } from '@/lib/types';
 
 async function fetchAllFromSupabase(
   table: string,
   select: string,
+  tenantId: string,
   filterCallback?: (query: any) => any
 ): Promise<any[]> {
   const allData: any[] = [];
@@ -17,7 +12,7 @@ async function fetchAllFromSupabase(
   const step = 1000;
 
   while (true) {
-    let query = supabase.from(table).select(select);
+    let query = supabase.from(table).select(select).eq('tenant_id', tenantId);
     if (filterCallback) {
       query = filterCallback(query);
     }
@@ -45,6 +40,7 @@ export const salesService = {
   async createSale(
     posId: string,
     posNumber: number,
+    tenantId: string,
     items: SaleItem[],
     total: number,
     paymentMethod?: PaymentMethod,
@@ -58,6 +54,7 @@ export const salesService = {
           {
             pos_id: posId,
             pos_number: posNumber,
+            tenant_id: tenantId,
             total,
             items,
             payment_method: paymentMethod,
@@ -80,12 +77,13 @@ export const salesService = {
     }
   },
 
-  async getSalesByPos(posId: string, limit = 50): Promise<Sale[]> {
+  async getSalesByPos(posId: string, tenantId: string, limit = 50): Promise<Sale[]> {
     try {
       const { data, error } = await supabase
         .from('sales')
         .select('*')
         .eq('pos_id', posId)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(limit);
 
@@ -99,7 +97,7 @@ export const salesService = {
     }
   },
 
-  async getSalesByPosNumber(posNumber: number, limit = 1000, startDate?: string): Promise<Sale[]> {
+  async getSalesByPosNumber(posNumber: number, tenantId: string, limit = 1000, startDate?: string): Promise<Sale[]> {
     try {
       const allData: Sale[] = [];
       let from = 0;
@@ -110,7 +108,8 @@ export const salesService = {
         let query = supabase
           .from('sales')
           .select('*')
-          .eq('pos_number', posNumber);
+          .eq('pos_number', posNumber)
+          .eq('tenant_id', tenantId);
         
         if (startDate) {
           query = query.gte('created_at', startDate);
@@ -139,12 +138,13 @@ export const salesService = {
     }
   },
 
-  async deleteSale(saleId: string): Promise<boolean> {
+  async deleteSale(saleId: string, tenantId: string): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('sales')
         .delete()
-        .eq('id', saleId);
+        .eq('id', saleId)
+        .eq('tenant_id', tenantId);
 
       if (error) {
         return false;
@@ -156,7 +156,7 @@ export const salesService = {
     }
   },
 
-  async getAllSales(limit = 1000): Promise<Sale[]> {
+  async getAllSales(tenantId: string, limit = 1000): Promise<Sale[]> {
     try {
       const allData: Sale[] = [];
       let from = 0;
@@ -167,6 +167,7 @@ export const salesService = {
         const { data, error } = await supabase
           .from('sales')
           .select('*')
+          .eq('tenant_id', tenantId)
           .order('created_at', { ascending: false })
           .range(from, from + currentStep - 1);
 
@@ -189,19 +190,22 @@ export const salesService = {
     }
   },
 
-  async getPosDashboard(posId: string, posNumber: number): Promise<POSDashboardStats | null> {
+  async getPosDashboard(posId: string, posNumber: number, tenantId: string, settings?: TenantSettings): Promise<POSDashboardStats | null> {
     try {
       const sales = await fetchAllFromSupabase(
         'sales',
         'total, items, created_at',
+        tenantId,
         (q) => q.eq('pos_number', posNumber)
       );
+
+      const posName = settings?.pos_names[posNumber] || `POS ${posNumber}`;
 
       if (!sales || sales.length === 0) {
         // Return empty stats instead of null to keep UI happy
         return {
           pos_number: posNumber,
-          pos_name: POS_NAMES[posNumber] || `POS ${posNumber}`,
+          pos_name: posName,
           total_sales: 0,
           total_revenue: 0,
           total_items_sold: 0,
@@ -245,7 +249,7 @@ export const salesService = {
 
       return {
         pos_number: posNumber,
-        pos_name: POS_NAMES[posNumber] || `POS ${posNumber}`,
+        pos_name: posName,
         total_sales,
         total_revenue,
         total_items_sold,
@@ -258,9 +262,9 @@ export const salesService = {
     }
   },
 
-  async getAdminDashboard(): Promise<DashboardStats | null> {
+  async getAdminDashboard(tenantId: string): Promise<DashboardStats | null> {
     try {
-      const sales = await fetchAllFromSupabase('sales', 'total, items');
+      const sales = await fetchAllFromSupabase('sales', 'total, items', tenantId);
 
       if (!sales) {
         return null;
@@ -308,7 +312,7 @@ export const salesService = {
     }
   },
 
-  async getTodaySalesTotal(posNumber: number): Promise<number> {
+  async getTodaySalesTotal(posNumber: number, tenantId: string): Promise<number> {
     try {
       const now = new Date();
       const argentinaTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
@@ -326,6 +330,7 @@ export const salesService = {
       const sales = await fetchAllFromSupabase(
         'sales',
         'total',
+        tenantId,
         (q) => q.eq('pos_number', posNumber)
           .gte('created_at', startOfDay.toISOString())
           .lt('created_at', endOfDay.toISOString())
@@ -342,7 +347,7 @@ export const salesService = {
     }
   },
 
-  async getTodaySalesCombined(): Promise<number> {
+  async getTodaySalesCombined(tenantId: string): Promise<number> {
     try {
       const now = new Date();
       const argentinaTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
@@ -360,6 +365,7 @@ export const salesService = {
       const sales = await fetchAllFromSupabase(
         'sales',
         'total',
+        tenantId,
         (q) => q.gte('created_at', startOfDay.toISOString())
           .lt('created_at', endOfDay.toISOString())
       );
@@ -375,7 +381,35 @@ export const salesService = {
     }
   },
 
-  async getSalesPerDay(days = 30): Promise<Array<{ date: string; total: number; pos1: number; pos2: number; pos3: number }>> {
+  async getSalesCountByProduct(tenantId: string, limit = 200): Promise<Record<string, number>> {
+    try {
+      const { data: sales, error } = await supabase
+        .from('sales')
+        .select('items')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error || !sales) return {};
+
+      const counts: Record<string, number> = {};
+      sales.forEach((sale: any) => {
+        sale.items.forEach((item: any) => {
+          if (!counts[item.product_id]) {
+            counts[item.product_id] = 0;
+          }
+          counts[item.product_id] += item.quantity;
+        });
+      });
+
+      return counts;
+    } catch (error) {
+      console.error('Error in getSalesCountByProduct:', error);
+      return {};
+    }
+  },
+
+  async getSalesPerDay(tenantId: string, days = 30): Promise<Array<{ date: string; total: number; [key: string]: any }>> {
     try {
       const now = new Date();
       // Calculate start date in Argentina time
@@ -386,6 +420,7 @@ export const salesService = {
       const sales = await fetchAllFromSupabase(
         'sales',
         'total, created_at, pos_number',
+        tenantId,
         (q) => q.gte('created_at', startDateArg.toISOString())
       );
 
@@ -393,7 +428,7 @@ export const salesService = {
         return [];
       }
 
-      const salesByDay: Record<string, { total: number; pos1: number; pos2: number; pos3: number }> = {};
+      const salesByDay: Record<string, { total: number; [key: string]: number }> = {};
 
       sales.forEach((sale) => {
         const saleDate = new Date(sale.created_at);
@@ -413,17 +448,12 @@ export const salesService = {
         const dateKey = `${businessDate.getFullYear()}-${String(businessDate.getMonth() + 1).padStart(2, '0')}-${String(businessDate.getDate()).padStart(2, '0')}`;
         
         if (!salesByDay[dateKey]) {
-          salesByDay[dateKey] = { total: 0, pos1: 0, pos2: 0, pos3: 0 };
+          salesByDay[dateKey] = { total: 0 };
         }
 
         salesByDay[dateKey].total += sale.total;
-        if (sale.pos_number === 1) {
-          salesByDay[dateKey].pos1 += sale.total;
-        } else if (sale.pos_number === 2) {
-          salesByDay[dateKey].pos2 += sale.total;
-        } else if (sale.pos_number === 3) {
-          salesByDay[dateKey].pos3 += sale.total;
-        }
+        const posKey = `pos${sale.pos_number}`;
+        salesByDay[dateKey][posKey] = (salesByDay[dateKey][posKey] || 0) + sale.total;
       });
 
       return Object.entries(salesByDay)
@@ -438,7 +468,7 @@ export const salesService = {
     }
   },
 
-  async getSalesByDayAndPos(posNumber: number, days = 30): Promise<Array<{ date: string; total: number }>> {
+  async getSalesByDayAndPos(posNumber: number, tenantId: string, days = 30): Promise<Array<{ date: string; total: number }>> {
     try {
       const now = new Date();
       const startDateArg = new Date(now.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
@@ -448,6 +478,7 @@ export const salesService = {
       const sales = await fetchAllFromSupabase(
         'sales',
         'total, created_at',
+        tenantId,
         (q) => q.eq('pos_number', posNumber).gte('created_at', startDateArg.toISOString())
       );
 
@@ -490,7 +521,7 @@ export const salesService = {
     }
   },
 
-  async getProductsByDayAndPos(posNumber: number, date: string): Promise<Array<{ product_name: string; quantity: number; subtotal: number }>> {
+  async getProductsByDayAndPos(posNumber: number, tenantId: string, date: string): Promise<Array<{ product_name: string; quantity: number; subtotal: number }>> {
     try {
       const dayStart = new Date(date + 'T03:00:00');
       const dayEnd = new Date(dayStart);
@@ -499,6 +530,7 @@ export const salesService = {
       const sales = await fetchAllFromSupabase(
         'sales',
         '*',
+        tenantId,
         (q) => q.eq('pos_number', posNumber)
           .gte('created_at', dayStart.toISOString())
           .lt('created_at', dayEnd.toISOString())
@@ -531,11 +563,12 @@ export const salesService = {
     }
   },
 
-  async getAllProductsSoldByPos(posId: string, fromDate?: string): Promise<Record<string, Array<{ product_name: string; quantity: number }>>> {
+  async getAllProductsSoldByPos(posId: string, tenantId: string, fromDate?: string): Promise<Record<string, Array<{ product_name: string; quantity: number }>>> {
     try {
       const sales = await fetchAllFromSupabase(
         'sales',
         '*',
+        tenantId,
         (q) => {
           let query = q.eq('pos_id', posId);
           if (fromDate) {
@@ -552,7 +585,8 @@ export const salesService = {
 
       const { data: products } = await supabase
         .from('products')
-        .select('id, name, category');
+        .select('id, name, category')
+        .eq('tenant_id', tenantId);
 
       const productCategoryMap: Record<string, string> = {};
       if (products) {
@@ -594,7 +628,7 @@ export const salesService = {
     }
   },
 
-  async getSalesByDate(date: string): Promise<Sale[]> {
+  async getSalesByDate(date: string, tenantId: string): Promise<Sale[]> {
     try {
       // business day starts at 3 AM
       const dayStart = new Date(date + 'T03:00:00');
@@ -604,6 +638,7 @@ export const salesService = {
       const sales = await fetchAllFromSupabase(
         'sales',
         '*',
+        tenantId,
         (q) => q.gte('created_at', dayStart.toISOString())
           .lt('created_at', dayEnd.toISOString())
       );
@@ -619,12 +654,13 @@ export const salesService = {
     }
   },
 
-  async getSalesByCustomer(customerId: string): Promise<Sale[]> {
+  async getSalesByCustomer(customerId: string, tenantId: string): Promise<Sale[]> {
     try {
       const { data, error } = await supabase
         .from('sales')
         .select('*')
         .eq('customer_id', customerId)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

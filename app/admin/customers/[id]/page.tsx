@@ -14,7 +14,7 @@ import Link from 'next/link';
 export default function CustomerDetailPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, tenant } = useAuthStore();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,8 +40,8 @@ export default function CustomerDetailPage() {
     const fetchData = async () => {
       setLoading(true);
       const [customerData, salesData] = await Promise.all([
-        customerService.getById(id),
-        salesService.getSalesByCustomer(id)
+        customerService.getById(id, user.tenant_id),
+        salesService.getSalesByCustomer(id, user.tenant_id)
       ]);
       
       setCustomer(customerData);
@@ -57,12 +57,20 @@ export default function CustomerDetailPage() {
     fetchData();
   }, [id, user, router]);
 
+  const posOptions = useMemo(() => {
+    if (!tenant) return [];
+    return Object.entries(tenant.settings.pos_names).map(([number, name]) => ({
+      value: number,
+      label: `POS ${number} - ${name}`
+    }));
+  }, [tenant]);
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editName.trim() || !editPhone.trim()) return;
+    if (!user || !editName.trim() || !editPhone.trim()) return;
 
     setIsUpdating(true);
-    const updated = await customerService.update(id, {
+    const updated = await customerService.update(id, user.tenant_id, {
       full_name: editName.trim(),
       phone_number: editPhone.trim(),
       pos_number: parseInt(editPos)
@@ -76,8 +84,9 @@ export default function CustomerDetailPage() {
   };
 
   const handleDelete = async () => {
+    if (!user) return;
     setIsDeleting(true);
-    const success = await customerService.delete(id);
+    const success = await customerService.delete(id, user.tenant_id);
     if (success) {
       router.push('/admin/customers');
     } else {
@@ -364,9 +373,11 @@ export default function CustomerDetailPage() {
                   onChange={(e) => setEditPos(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                 >
-                  <option value="1">POS 1 - Costa del Este</option>
-                  <option value="2">POS 2 - Mar de las Pampas</option>
-                  <option value="3">POS 3 - Costa Esmeralda</option>
+                  {posOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="flex gap-3 pt-4">

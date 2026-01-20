@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { useAuthStore } from '@/lib/store';
@@ -16,19 +16,22 @@ interface FormItem extends ExpenseItem {
 }
 
 const CATEGORIES: ExpenseCategory[] = ['Compra de Inventario', 'Expensas', 'Luz', 'Internet', 'Agua', 'Otros'];
-const POS_OPTIONS = [
-  { id: 1, name: 'Costa del Este' },
-  { id: 2, name: 'Mar de las Pampas' },
-  { id: 3, name: 'Costa Esmeralda' },
-];
-
 export default function CreateExpensePage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, tenant } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
+  
+  const POS_OPTIONS = useMemo(() => {
+    if (!tenant) return [];
+    return Object.entries(tenant.settings.pos_names).map(([id, name]) => ({
+      id: parseInt(id),
+      name
+    }));
+  }, [tenant]);
+
   const [showNewProductModal, setShowNewProductModal] = useState(false);
   const [openSearchDropdownId, setOpenSearchDropdownId] = useState<string | null>(null);
   const [newProductForm, setNewProductForm] = useState({
@@ -62,12 +65,13 @@ export default function CreateExpensePage() {
   }, [user, router]);
 
   const loadProducts = async () => {
-    const prods = await productService.getAll();
+    if (!user) return;
+    const prods = await productService.getAll(user.tenant_id);
     setProducts(prods);
   };
 
   const handleCreateProduct = async () => {
-    if (!newProductForm.name.trim()) {
+    if (!newProductForm.name.trim() || !user) {
       alert('El nombre del producto es requerido');
       return;
     }
@@ -75,6 +79,7 @@ export default function CreateExpensePage() {
     setCreatingProduct(true);
     try {
       const createdProduct = await productService.create({
+        tenant_id: user.tenant_id,
         name: newProductForm.name,
         description: newProductForm.description,
         price: newProductForm.price,
@@ -220,6 +225,7 @@ export default function CreateExpensePage() {
       if (isInventoryPurchase) {
         payload = {
           createdBy: user.id,
+          tenant_id: user.tenant_id,
           posNumber: posNumber || undefined,
           category,
           items: items.map((item) => {
@@ -252,6 +258,7 @@ export default function CreateExpensePage() {
       } else {
         payload = {
           createdBy: user.id,
+          tenant_id: user.tenant_id,
           category,
           items: [
             {

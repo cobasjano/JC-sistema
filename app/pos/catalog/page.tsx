@@ -30,23 +30,8 @@ export default function CatalogPage() {
 
   const getSalesCountByProduct = async () => {
     try {
-      const { data: sales, error } = await supabase
-        .from('sales')
-        .select('items')
-        .order('created_at', { ascending: false })
-        .limit(200);
-      if (error || !sales) return;
-
-      const counts: Record<string, number> = {};
-      sales.forEach((sale: any) => {
-        sale.items.forEach((item: any) => {
-          if (!counts[item.product_id]) {
-            counts[item.product_id] = 0;
-          }
-          counts[item.product_id] += item.quantity;
-        });
-      });
-
+      if (!user) return;
+      const counts = await salesService.getSalesCountByProduct(user.tenant_id, 200);
       setProductSalesCount(counts);
     } catch (error) {
       console.error('Error getting sales count:', error);
@@ -61,8 +46,8 @@ export default function CatalogPage() {
 
     const fetchData = async () => {
       const [productsData, categoriesData] = await Promise.all([
-        productService.getAll(),
-        productService.getCategories(),
+        productService.getAll(user.tenant_id),
+        productService.getCategories(user.tenant_id),
       ]);
       setProducts(productsData);
       setCategories(categoriesData);
@@ -76,8 +61,8 @@ export default function CatalogPage() {
   useEffect(() => {
     const fetchTodayTotal = async () => {
       if (user && user.role === 'pos' && user.pos_number) {
-        const total = await salesService.getTodaySalesTotal(user.pos_number);
-        const combined = await salesService.getTodaySalesCombined();
+        const total = await salesService.getTodaySalesTotal(user.pos_number, user.tenant_id);
+        const combined = await salesService.getTodaySalesCombined(user.tenant_id);
         setTodayTotal(total);
         setTodayTotalCombined(combined);
       }
@@ -90,8 +75,8 @@ export default function CatalogPage() {
 
   useEffect(() => {
     const fetchSubcategories = async () => {
-      if (selectedCategory) {
-        const subcats = await productService.getSubcategories(selectedCategory);
+      if (selectedCategory && user) {
+        const subcats = await productService.getSubcategories(selectedCategory, user.tenant_id);
         setSubcategories(subcats);
         setSelectedSubcategory('');
       } else {
@@ -100,7 +85,7 @@ export default function CatalogPage() {
     };
 
     fetchSubcategories();
-  }, [selectedCategory]);
+  }, [selectedCategory, user]);
 
   const handleAddToCart = (product: Product) => {
     addItem({

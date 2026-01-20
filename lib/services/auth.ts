@@ -1,23 +1,29 @@
 import { supabase } from '@/lib/supabase';
-import { User } from '@/lib/types';
+import { User, Tenant } from '@/lib/types';
+import { tenantService } from './tenants';
 import crypto from 'crypto';
 
 export const authService = {
-  async login(email: string, password: string): Promise<{ user: User; token: string } | null> {
+  async login(email: string, password: string): Promise<{ user: User; token: string; tenant: Tenant } | null> {
     try {
-      const { data, error } = await supabase
+      const { data: user, error } = await supabase
         .from('users')
         .select('*')
         .eq('email', email)
         .single();
 
-      if (error || !data) {
+      if (error || !user) {
         return null;
       }
 
       const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
 
-      if (data.password_hash !== passwordHash) {
+      if (user.password_hash !== passwordHash) {
+        return null;
+      }
+
+      const tenant = await tenantService.getTenant(user.tenant_id);
+      if (!tenant) {
         return null;
       }
 
@@ -25,13 +31,13 @@ export const authService = {
 
       const { error: tokenError } = await supabase
         .from('sessions')
-        .insert([{ user_id: data.id, token, expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }]);
+        .insert([{ user_id: user.id, token, expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }]);
 
       if (tokenError) {
         return null;
       }
 
-      return { user: data, token };
+      return { user, token, tenant };
     } catch {
       return null;
     }
@@ -41,6 +47,7 @@ export const authService = {
     email: string,
     password: string,
     role: 'admin' | 'pos',
+    tenantId: string,
     posNumber?: number
   ): Promise<User | null> {
     try {
@@ -53,6 +60,7 @@ export const authService = {
             email,
             password_hash: passwordHash,
             role,
+            tenant_id: tenantId,
             pos_number: posNumber,
           },
         ])
@@ -69,7 +77,7 @@ export const authService = {
     }
   },
 
-  async validateToken(token: string): Promise<User | null> {
+  async validateToken(token: string): Promise<{ user: User; tenant: Tenant } | null> {
     try {
       const { data, error } = await supabase
         .from('sessions')
@@ -88,11 +96,16 @@ export const authService = {
         .eq('id', data.user_id)
         .single();
 
-      if (userError) {
+      if (userError || !user) {
         return null;
       }
 
-      return user;
+      const tenant = await tenantService.getTenant(user.tenant_id);
+      if (!tenant) {
+        return null;
+      }
+
+      return { user, tenant };
     } catch {
       return null;
     }

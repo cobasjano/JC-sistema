@@ -4,12 +4,12 @@ import { ExpenseItem } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
-    const { createdBy, posNumber, category, items, total, shippingCost, notes, paymentStatus, checkDate } = await request.json();
+    const { createdBy, posNumber, category, items, total, shippingCost, notes, paymentStatus, checkDate, tenant_id } = await request.json();
 
-    if (!createdBy) {
-      console.error('Error: createdBy no identificado');
+    if (!createdBy || !tenant_id) {
+      console.error('Error: createdBy o tenant_id no identificado');
       return NextResponse.json(
-        { error: 'Usuario no identificado' },
+        { error: 'Usuario o Tenant no identificado' },
         { status: 401 }
       );
     }
@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
     
     const insertData: Record<string, unknown> = {
       created_by: createdBy,
+      tenant_id: tenant_id,
       items: validatedItems,
       subtotal,
       shipping_cost: finalShippingCost,
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
       insertData.category = category;
     }
 
-    if (posNumber && typeof posNumber === 'number' && posNumber >= 1 && posNumber <= 3) {
+    if (posNumber && typeof posNumber === 'number' && posNumber >= 1) {
       insertData.pos_number = posNumber;
     }
     if (notes && typeof notes === 'string' && notes.trim()) {
@@ -148,15 +149,24 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const tenant_id = searchParams.get('tenant_id');
     const status = searchParams.get('status') as 'pendiente' | 'aprobado' | 'rechazado' | null;
     const category = searchParams.get('category');
     const posNumber = searchParams.get('posNumber');
+
+    if (!tenant_id) {
+      return NextResponse.json(
+        { error: 'tenant_id es requerido' },
+        { status: 400 }
+      );
+    }
 
     if (id) {
       const { data, error } = await supabaseAdmin
         .from('expenses')
         .select('*')
         .eq('id', id)
+        .eq('tenant_id', tenant_id)
         .single();
 
       if (error) {
@@ -169,7 +179,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data);
     }
 
-    let query = supabaseAdmin.from('expenses').select('*');
+    let query = supabaseAdmin.from('expenses').select('*').eq('tenant_id', tenant_id);
 
     if (status) {
       query = query.eq('status', status);
@@ -206,10 +216,11 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const tenant_id = searchParams.get('tenant_id');
 
-    if (!id) {
+    if (!id || !tenant_id) {
       return NextResponse.json(
-        { error: 'ID de gasto no proporcionado' },
+        { error: 'ID de gasto o tenant_id no proporcionado' },
         { status: 400 }
       );
     }
@@ -217,7 +228,8 @@ export async function DELETE(request: NextRequest) {
     const { error } = await supabaseAdmin
       .from('expenses')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('tenant_id', tenant_id);
 
     if (error) {
       console.error('Supabase delete error:', error);
@@ -241,10 +253,11 @@ export async function PATCH(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const tenant_id = searchParams.get('tenant_id');
 
-    if (!id) {
+    if (!id || !tenant_id) {
       return NextResponse.json(
-        { error: 'ID de gasto no proporcionado' },
+        { error: 'ID de gasto o tenant_id no proporcionado' },
         { status: 400 }
       );
     }
@@ -270,6 +283,7 @@ export async function PATCH(request: NextRequest) {
       .from('expenses')
       .update(updateData)
       .eq('id', id)
+      .eq('tenant_id', tenant_id)
       .select()
       .single();
 

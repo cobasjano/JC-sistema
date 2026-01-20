@@ -10,7 +10,7 @@ import Link from 'next/link';
 
 export default function AdminCustomersPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, tenant } = useAuthStore();
   const [customers, setCustomers] = useState<CustomerRanking[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,7 +31,7 @@ export default function AdminCustomersPage() {
 
     const fetchCustomers = async () => {
       setLoading(true);
-      const data = await customerService.getRanking();
+      const data = await customerService.getRanking(user.tenant_id);
       setCustomers(data);
       setLoading(false);
     };
@@ -39,12 +39,21 @@ export default function AdminCustomersPage() {
     fetchCustomers();
   }, [user, router]);
 
+  const posOptions = useMemo(() => {
+    if (!tenant) return [];
+    return Object.entries(tenant.settings.pos_names).map(([number, name]) => ({
+      value: number,
+      label: `POS ${number} - ${name}`
+    }));
+  }, [tenant]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim() || !newPhone.trim()) return;
+    if (!user || !newName.trim() || !newPhone.trim()) return;
 
     setIsCreating(true);
     const created = await customerService.create({
+      tenant_id: user.tenant_id,
       full_name: newName.trim(),
       phone_number: newPhone.trim(),
       pos_number: parseInt(newPos)
@@ -55,7 +64,7 @@ export default function AdminCustomersPage() {
       setNewPhone('');
       setShowCreateModal(false);
       // Re-fetch ranking manually
-      const data = await customerService.getRanking();
+      const data = await customerService.getRanking(user.tenant_id);
       setCustomers(data);
     }
     setIsCreating(false);
@@ -108,9 +117,11 @@ export default function AdminCustomersPage() {
                 className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-500/20 outline-none transition-all min-w-[150px]"
               >
                 <option value="all">Todos los POS</option>
-                <option value="1">POS 1 - Costa del Este</option>
-                <option value="2">POS 2 - Mar de las Pampas</option>
-                <option value="3">POS 3 - Costa Esmeralda</option>
+                {posOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -223,9 +234,11 @@ export default function AdminCustomersPage() {
                   onChange={(e) => setNewPos(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
                 >
-                  <option value="1">POS 1 - Costa del Este</option>
-                  <option value="2">POS 2 - Mar de las Pampas</option>
-                  <option value="3">POS 3 - Costa Esmeralda</option>
+                  {posOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="flex gap-3 pt-4">

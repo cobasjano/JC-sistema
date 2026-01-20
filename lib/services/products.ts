@@ -2,11 +2,12 @@ import { supabase } from '@/lib/supabase';
 import { Product } from '@/lib/types';
 
 export const productService = {
-  async getAll(): Promise<Product[]> {
+  async getAll(tenantId: string): Promise<Product[]> {
     try {
       const { data, error } = await supabase
         .from('products')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('name');
 
       if (error) {
@@ -19,12 +20,13 @@ export const productService = {
     }
   },
 
-  async getById(id: string): Promise<Product | null> {
+  async getById(id: string, tenantId: string): Promise<Product | null> {
     try {
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .eq('id', id)
+        .eq('tenant_id', tenantId)
         .single();
 
       if (error) {
@@ -55,12 +57,13 @@ export const productService = {
     }
   },
 
-  async update(id: string, product: Partial<Product>): Promise<Product | null> {
+  async update(id: string, tenantId: string, product: Partial<Product>): Promise<Product | null> {
     try {
       const { data, error } = await supabase
         .from('products')
         .update(product)
         .eq('id', id)
+        .eq('tenant_id', tenantId)
         .select()
         .single();
 
@@ -74,12 +77,13 @@ export const productService = {
     }
   },
 
-  async delete(id: string): Promise<boolean> {
+  async delete(id: string, tenantId: string): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('products')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
 
       return !error;
     } catch {
@@ -87,12 +91,13 @@ export const productService = {
     }
   },
 
-  async updateStock(id: string, quantity: number): Promise<boolean> {
+  async updateStock(id: string, tenantId: string, quantity: number): Promise<boolean> {
     try {
       const { data: product, error: fetchError } = await supabase
         .from('products')
         .select('stock')
         .eq('id', id)
+        .eq('tenant_id', tenantId)
         .single();
 
       if (fetchError || !product) {
@@ -102,7 +107,8 @@ export const productService = {
       const { error } = await supabase
         .from('products')
         .update({ stock: product.stock - quantity })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
 
       return !error;
     } catch {
@@ -110,11 +116,12 @@ export const productService = {
     }
   },
 
-  async getCategories(): Promise<string[]> {
+  async getCategories(tenantId: string): Promise<string[]> {
     try {
       const { data, error } = await supabase
         .from('products')
         .select('category')
+        .eq('tenant_id', tenantId)
         .not('category', 'is', null)
         .order('category');
 
@@ -129,12 +136,13 @@ export const productService = {
     }
   },
 
-  async getSubcategories(category: string): Promise<string[]> {
+  async getSubcategories(category: string, tenantId: string): Promise<string[]> {
     try {
       const { data, error } = await supabase
         .from('products')
         .select('subcategory')
         .eq('category', category)
+        .eq('tenant_id', tenantId)
         .not('subcategory', 'is', null)
         .order('subcategory');
 

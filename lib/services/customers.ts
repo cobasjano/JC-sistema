@@ -2,9 +2,9 @@ import { supabase } from '@/lib/supabase';
 import { Customer, CustomerRanking } from '@/lib/types';
 
 export const customerService = {
-  async getAll(posNumber?: number): Promise<Customer[]> {
+  async getAll(tenantId: string, posNumber?: number): Promise<Customer[]> {
     try {
-      let query = supabase.from('customers').select('*');
+      let query = supabase.from('customers').select('*').eq('tenant_id', tenantId);
       if (posNumber) {
         query = query.eq('pos_number', posNumber);
       }
@@ -17,9 +17,9 @@ export const customerService = {
     }
   },
 
-  async search(term: string, posNumber?: number): Promise<Customer[]> {
+  async search(term: string, tenantId: string, posNumber?: number): Promise<Customer[]> {
     try {
-      let query = supabase.from('customers').select('*');
+      let query = supabase.from('customers').select('*').eq('tenant_id', tenantId);
       if (posNumber) {
         query = query.eq('pos_number', posNumber);
       }
@@ -58,12 +58,13 @@ export const customerService = {
     }
   },
 
-  async getById(id: string): Promise<Customer | null> {
+  async getById(id: string, tenantId: string): Promise<Customer | null> {
     try {
       const { data, error } = await supabase
         .from('customers')
         .select('*')
         .eq('id', id)
+        .eq('tenant_id', tenantId)
         .single();
       if (error) throw error;
       return data;
@@ -73,15 +74,16 @@ export const customerService = {
     }
   },
 
-  async getRanking(posNumber?: number): Promise<CustomerRanking[]> {
+  async getRanking(tenantId: string, posNumber?: number): Promise<CustomerRanking[]> {
     try {
       // Get all customers
-      const customers = await this.getAll(posNumber);
+      const customers = await this.getAll(tenantId, posNumber);
       
       // Get all sales for these customers
       const { data: sales, error } = await supabase
         .from('sales')
         .select('customer_id, total')
+        .eq('tenant_id', tenantId)
         .not('customer_id', 'is', null);
       
       if (error) throw error;
@@ -108,12 +110,13 @@ export const customerService = {
     }
   },
 
-  async update(id: string, updates: Partial<Omit<Customer, 'id' | 'created_at' | 'updated_at'>>): Promise<Customer | null> {
+  async update(id: string, tenantId: string, updates: Partial<Omit<Customer, 'id' | 'created_at' | 'updated_at'>>): Promise<Customer | null> {
     try {
       const { data, error } = await supabase
         .from('customers')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
+        .eq('tenant_id', tenantId)
         .select()
         .single();
       if (error) throw error;
@@ -124,12 +127,13 @@ export const customerService = {
     }
   },
 
-  async delete(id: string): Promise<boolean> {
+  async delete(id: string, tenantId: string): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('customers')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
       if (error) throw error;
       return true;
     } catch (error) {

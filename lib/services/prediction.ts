@@ -16,10 +16,18 @@ const WEATHER_ICONS = {
   rainy: '🌧️'
 };
 
-const POS_CHARACTERISTICS: Record<number, { morningBoost: number, noonBoost: number, afternoonBoost: number, touristSensitivity: number }> = {
-  1: { morningBoost: 1.2, noonBoost: 1.0, afternoonBoost: 1.5, touristSensitivity: 0.8 }, // Costa del Este
-  2: { morningBoost: 1.0, noonBoost: 1.2, afternoonBoost: 1.8, touristSensitivity: 0.9 }, // Mar de las Pampas
-  3: { morningBoost: 1.5, noonBoost: 1.1, afternoonBoost: 1.3, touristSensitivity: 0.7 }, // Costa Esmeralda
+export interface POSCharacteristics {
+  morningBoost: number;
+  noonBoost: number;
+  afternoonBoost: number;
+  touristSensitivity: number;
+}
+
+const DEFAULT_CHARACTERISTICS: POSCharacteristics = {
+  morningBoost: 1,
+  noonBoost: 1,
+  afternoonBoost: 1,
+  touristSensitivity: 0.5
 };
 
 export const predictionService = {
@@ -45,17 +53,19 @@ export const predictionService = {
     posNumber: number,
     weather: WeatherCondition = 'sunny',
     flowOverride?: TouristFlow,
-    date: Date = new Date()
+    date: Date = new Date(),
+    characteristics?: POSCharacteristics,
+    seasonalityMonths: number[] = [0, 1]
   ): Forecast {
     const isInflection = this.getInflectionPoint(date);
     const flow = flowOverride || this.getTouristFlow(date);
     const month = date.getMonth();
-    const chars = POS_CHARACTERISTICS[posNumber] || { morningBoost: 1, noonBoost: 1, afternoonBoost: 1, touristSensitivity: 0.5 };
+    const chars = characteristics || DEFAULT_CHARACTERISTICS;
     
     let baseGrowth = 0;
     
-    // Month Factor (Jan/Feb are the best)
-    if (month === 0 || month === 1) baseGrowth += 40; 
+    // Month Factor (Seasonality)
+    if (seasonalityMonths.includes(month)) baseGrowth += 40; 
     
     // Flow Factor
     if (flow === 'high') baseGrowth += 20;
