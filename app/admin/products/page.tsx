@@ -248,6 +248,14 @@ export default function ProductsPage() {
       }
 
       setPurchases([data, ...purchases]);
+      
+      // Actualizar stock del producto en el estado local
+      setProducts(products.map(p => 
+        p.id === selectedProductForPurchase 
+          ? { ...p, stock: p.stock + parseInt(purchaseData.quantity) } 
+          : p
+      ));
+
       setSelectedProductForPurchase('');
       setPurchaseData({ quantity: '', purchasePrice: '' });
       setPurchaseSearchTerm('');

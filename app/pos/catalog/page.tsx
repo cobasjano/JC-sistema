@@ -93,6 +93,7 @@ export default function CatalogPage() {
       product_name: product.name,
       quantity: 1,
       price: product.price,
+      stock: product.stock,
     });
   };
 
@@ -260,7 +261,15 @@ export default function CatalogPage() {
                           />
                         </div>
                       )}
-                      <h3 className="font-bold text-[11px] text-gray-900 mb-2 line-clamp-2 uppercase tracking-tight h-8 leading-tight" style={{ textRendering: 'optimizeLegibility', WebkitFontSmoothing: 'antialiased' }}>{product.name}</h3>
+                      <div className="flex justify-between items-start h-8 mb-2">
+                        <h3 className="font-bold text-[11px] text-gray-900 line-clamp-2 uppercase tracking-tight leading-tight" style={{ textRendering: 'optimizeLegibility', WebkitFontSmoothing: 'antialiased' }}>{product.name}</h3>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1 whitespace-nowrap ${
+                          product.stock <= 0 ? 'bg-red-100 text-red-600' : 
+                          product.stock < 5 ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'
+                        }`}>
+                          Stock: {product.stock}
+                        </span>
+                      </div>
                       
                       <div className="flex flex-wrap gap-1 mb-3 flex-grow">
                         {product.category && (

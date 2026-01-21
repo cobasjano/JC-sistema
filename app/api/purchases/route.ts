@@ -64,6 +64,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Incrementar stock del producto
+    const { error: stockError } = await supabaseAdmin.rpc('increment_product_stock', {
+      p_product_id: productId,
+      p_quantity: quantity
+    });
+
+    if (stockError) {
+      console.error('Error al incrementar stock:', stockError);
+    }
+
     return NextResponse.json(purchase, { status: 201 });
   } catch (error) {
     console.error('Error interno:', error);

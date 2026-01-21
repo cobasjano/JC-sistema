@@ -70,6 +70,17 @@ export default function CheckoutPage() {
       }
     }
 
+    // Alerta de stock insuficiente
+    const itemsSinStock = items.filter(item => (item.stock ?? 0) < item.quantity);
+    if (itemsSinStock.length > 0) {
+      const confirmacion = confirm(
+        `Aviso: Los siguientes productos no tienen stock suficiente:\n${
+          itemsSinStock.map(i => `- ${i.product_name} (Disponible: ${i.stock ?? 0}, Pedido: ${i.quantity})`).join('\n')
+        }\n\n¿Deseas continuar con la venta de todos modos?`
+      );
+      if (!confirmacion) return;
+    }
+
     setProcessing(true);
     setError('');
 

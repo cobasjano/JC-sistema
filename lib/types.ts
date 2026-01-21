@@ -67,6 +67,7 @@ export interface CartItem {
   product_name: string;
   quantity: number;
   price: number;
+  stock?: number;
 }
 
 export interface Sale {
