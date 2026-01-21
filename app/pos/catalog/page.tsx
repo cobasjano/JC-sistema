@@ -312,7 +312,7 @@ export default function CatalogPage() {
           Finalizar Venta
         </button>
       </div>
-      </div>
     </div>
-  );
+  </div>
+);
 }

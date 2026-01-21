@@ -58,11 +58,8 @@ export function Navbar() {
       .filter(p => p.pos !== user.pos_number && p.phone);
   }, [user, tenant]);
 
-  if (!user) {
-    return null;
-  }
-
   const navItems = useMemo(() => {
+    if (!user) return [];
     if (user.role === 'superadmin') {
       return [{ href: '/superadmin/dashboard', label: 'Dashboard SaaS' }];
     }
@@ -81,7 +78,11 @@ export function Navbar() {
           { href: '/pos/sales', label: 'Historial' },
           { href: '/pos/stats', label: 'Estadísticas' }
         ];
-  }, [user.role]);
+  }, [user?.role]);
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <nav className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50" style={{ WebkitFontSmoothing: 'antialiased' }}>
