@@ -34,6 +34,7 @@ export default function ProductsPage() {
     category: '',
     subcategory: '',
     image_url: '',
+    stock: '',
   });
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [selectedProductForPurchase, setSelectedProductForPurchase] = useState<string>('');
@@ -90,7 +91,7 @@ export default function ProductsPage() {
       category: formData.category || undefined,
       subcategory: formData.subcategory || undefined,
       image_url: formData.image_url,
-      stock: 0,
+      stock: parseInt(formData.stock) || 0,
       tenant_id: user.tenant_id,
     };
 
@@ -107,7 +108,7 @@ export default function ProductsPage() {
       }
     }
 
-    setFormData({ name: '', description: '', price: '', category: '', subcategory: '', image_url: '' });
+    setFormData({ name: '', description: '', price: '', category: '', subcategory: '', image_url: '', stock: '' });
     setShowForm(false);
   };
 
@@ -119,6 +120,7 @@ export default function ProductsPage() {
       category: product.category || '',
       subcategory: product.subcategory || '',
       image_url: product.image_url,
+      stock: product.stock.toString(),
     });
     setEditingId(product.id);
     setShowForm(true);
@@ -135,7 +137,7 @@ export default function ProductsPage() {
   };
 
   const handleCancel = () => {
-    setFormData({ name: '', description: '', price: '', category: '', subcategory: '', image_url: '' });
+    setFormData({ name: '', description: '', price: '', category: '', subcategory: '', image_url: '', stock: '' });
     setEditingId(null);
     setShowForm(false);
   };
@@ -656,6 +658,17 @@ export default function ProductsPage() {
                     placeholder="0.00"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Stock Inicial</label>
+                  <input
+                    type="number"
+                    value={formData.stock}
+                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 transition text-sm text-black"
+                    placeholder="0"
+                  />
+                </div>
               </div>
 
               <div>
@@ -739,6 +752,7 @@ export default function ProductsPage() {
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Nombre</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Categoría</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Stock</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Precio Venta</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Precio Compra</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Ganancia</th>
@@ -768,6 +782,11 @@ export default function ProductsPage() {
                         ) : (
                           <span className="text-gray-600">Sin categoría</span>
                         )}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-bold text-gray-900">
+                        <span className={`px-2 py-1 rounded-full text-xs ${product.stock <= 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                          {product.stock} un.
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span className="font-bold text-orange-600">${product.price.toFixed(2)}</span>

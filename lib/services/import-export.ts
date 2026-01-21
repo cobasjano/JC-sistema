@@ -21,7 +21,7 @@ export const importExportService = {
             description: row['Descripcion'] || '',
             price: parseFloat(row['Precio Venta']) || 0,
             image_url: row['Imagen'] || '',
-            stock: 0,
+            stock: parseInt(row['Stock']) || 0,
           }));
 
           resolve(products);

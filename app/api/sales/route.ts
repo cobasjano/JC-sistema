@@ -84,6 +84,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { data: tenantData } = await supabaseAdmin
+      .from('tenants')
+      .select('settings')
+      .eq('id', tenant_id)
+      .single();
+
+    const decrementStock = tenantData?.settings?.decrement_stock ?? true;
+
     const { data: sale, error } = await supabaseAdmin
       .from('sales')
       .insert([{ 
@@ -105,6 +113,23 @@ export async function POST(request: NextRequest) {
         { error: 'Error al crear la venta' },
         { status: 500 }
       );
+    }
+
+    // Decrementar stock si la configuración lo permite
+    if (decrementStock) {
+      for (const item of items) {
+        // Usamos una query para restar la cantidad vendida del stock actual
+        const { error: stockError } = await supabaseAdmin.rpc('decrement_product_stock', {
+          p_product_id: item.product_id,
+          p_quantity: item.quantity
+        });
+
+        if (stockError) {
+          console.error(`Error al decrementar stock para ${item.product_id}:`, stockError);
+          // Opcional: podrías decidir si fallar la venta completa o solo loguear el error
+          // Por ahora solo logueamos para no interrumpir la venta si ya se registró
+        }
+      }
     }
 
     return NextResponse.json(sale, { status: 201 });

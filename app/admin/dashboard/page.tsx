@@ -373,7 +373,6 @@ export default function AdminDashboardPage() {
               <span className="text-xs font-medium text-slate-400 uppercase tracking-[0.2em]">SISTEMA DE CONTROL CENTRAL</span>
             </div>
             <h1 className="text-5xl font-extralight text-slate-900 tracking-tight">Dashboard</h1>
-            <p className="text-slate-500 mt-2 max-w-md">Análisis predictivo y consolidación de ventas en red para administradores.</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <div className="bg-white/90 backdrop-blur-md p-1 rounded-xl flex gap-1 border border-slate-200 shadow-sm">

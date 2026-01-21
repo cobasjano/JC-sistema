@@ -12,6 +12,7 @@ export default function AdminSettingsPage() {
   const { user, tenant, setTenant } = useAuthStore();
   const [primaryColor, setPrimaryColor] = useState('#f97316');
   const [secondaryColor, setSecondaryColor] = useState('#0f172a');
+  const [decrementStock, setDecrementStock] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
@@ -23,6 +24,9 @@ export default function AdminSettingsPage() {
     if (tenant?.settings?.theme) {
       setPrimaryColor(tenant.settings.theme.primary || '#f97316');
       setSecondaryColor(tenant.settings.theme.secondary || '#0f172a');
+    }
+    if (tenant?.settings) {
+      setDecrementStock(tenant.settings.decrement_stock ?? true);
     }
   }, [user, tenant, router]);
 
@@ -36,7 +40,10 @@ export default function AdminSettingsPage() {
       secondary: secondaryColor,
     };
 
-    const success = await tenantService.updateSettings(tenant.id, { theme });
+    const success = await tenantService.updateSettings(tenant.id, { 
+      theme,
+      decrement_stock: decrementStock
+    });
 
     if (success) {
       setMessage({ type: 'success', text: 'Configuración guardada correctamente.' });
@@ -45,7 +52,8 @@ export default function AdminSettingsPage() {
         ...tenant,
         settings: {
           ...tenant.settings,
-          theme
+          theme,
+          decrement_stock: decrementStock
         }
       });
     } else {
@@ -137,6 +145,33 @@ export default function AdminSettingsPage() {
                   Fondo Secundario
                 </div>
               </div>
+            </div>
+          </section>
+
+          <section className="mb-12">
+            <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <span className="text-2xl">📦</span> Inventario y Ventas
+            </h2>
+            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100">
+              <label className="flex items-center gap-4 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={decrementStock}
+                    onChange={(e) => setDecrementStock(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-14 h-7 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
+                </div>
+                <div>
+                  <span className="text-sm font-bold text-slate-900 group-hover:text-primary transition-colors">Descontar stock en cada venta</span>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-1">
+                    {decrementStock 
+                      ? 'El sistema restará 1 unidad del stock por cada producto vendido.' 
+                      : 'El stock no se verá afectado por las ventas.'}
+                  </p>
+                </div>
+              </label>
             </div>
           </section>
 

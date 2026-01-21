@@ -36,7 +36,8 @@ const DEFAULT_SETTINGS: TenantSettings = {
   theme: {
     primary: '#f97316', // orange-500
     secondary: '#0f172a' // slate-900
-  }
+  },
+  decrement_stock: true
 };
 
 export const tenantService = {

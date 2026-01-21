@@ -24,6 +24,7 @@ export interface TenantSettings {
   commissions?: Record<string, number>;
   seasonality_months?: number[]; // e.g., [0, 1] for Jan/Feb
   theme?: ThemeSettings;
+  decrement_stock?: boolean;
 }
 
 export interface Tenant {
