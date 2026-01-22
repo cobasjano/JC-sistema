@@ -55,7 +55,7 @@ function ConfirmationContent() {
             onClick={() => router.push('/pos/catalog')}
             className="bg-orange-600 text-white px-8 py-3 rounded-lg hover:bg-orange-700 transition font-semibold"
           >
-            Continuar comprando
+            Volver al carrito
           </button>
         </div>
       </div>
