@@ -201,26 +201,28 @@ export default function SalesHistoryPage() {
                     <td className="px-2 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">
                       <div>
                         <p className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100">
-                          {new Date(sale.created_at).toLocaleDateString('es-AR')}
+                          {sale.created_at ? new Date(sale.created_at).toLocaleDateString('es-AR') : 'Fecha no disponible'}
                         </p>
-                        <p className="text-gray-600 dark:text-gray-400 text-xs">
-                          {formatDistanceToNow(new Date(sale.created_at), {
-                            addSuffix: true,
-                            locale: es,
-                          })}
-                        </p>
+                        {sale.created_at && !isNaN(new Date(sale.created_at).getTime()) && (
+                          <p className="text-gray-600 dark:text-gray-400 text-xs">
+                            {formatDistanceToNow(new Date(sale.created_at), {
+                              addSuffix: true,
+                              locale: es,
+                            })}
+                          </p>
+                        )}
                       </div>
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm text-gray-900 dark:text-gray-100">
-                      {sale.items.reduce((sum, item) => sum + item.quantity, 0)}
+                      {(sale.items || []).reduce((sum, item) => sum + item.quantity, 0)}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">
                       {sale.payment_method ? (
                         <div className="space-y-1">
                           {sale.payment_method === 'Mixto' && sale.payment_breakdown ? (
                             <div className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                              <div>{sale.payment_breakdown.method1} ${sale.payment_breakdown.amount1.toFixed(2)}</div>
-                              <div>+ {sale.payment_breakdown.method2} ${sale.payment_breakdown.amount2.toFixed(2)}</div>
+                              <div>{sale.payment_breakdown.method1} ${(sale.payment_breakdown.amount1 || 0).toFixed(2)}</div>
+                              <div>+ {sale.payment_breakdown.method2} ${(sale.payment_breakdown.amount2 || 0).toFixed(2)}</div>
                             </div>
                           ) : (
                             <span className="font-semibold text-gray-900 dark:text-gray-100">{sale.payment_method}</span>
@@ -231,18 +233,18 @@ export default function SalesHistoryPage() {
                       )}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm font-bold text-green-600 dark:text-green-400">
-                      ${sale.total.toFixed(2)}
+                      ${(sale.total || 0).toFixed(2)}
                     </td>
                     <td className="px-2 sm:px-6 py-2 sm:py-4 text-xs sm:text-sm">
                       <details className="cursor-pointer">
                         <summary className="text-orange-600 dark:text-orange-400 hover:underline text-xs">Ver</summary>
                         <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                          {sale.items.map((item, idx) => (
+                          {(sale.items || []).map((item, idx) => (
                             <div key={idx} className="flex justify-between text-xs py-1 text-gray-900 dark:text-gray-100">
                               <span>
                                 {item.product_name} x {item.quantity}
                               </span>
-                              <span>${item.subtotal.toFixed(2)}</span>
+                              <span>${(item.subtotal || 0).toFixed(2)}</span>
                             </div>
                           ))}
                         </div>

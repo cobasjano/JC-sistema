@@ -190,16 +190,8 @@ export default function SuperAdminDashboard() {
         </div>
 
         {globalStats && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Ventas Totales (Red)</span>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">${globalStats.total_revenue.toLocaleString()}</div>
-            </div>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Operaciones Globales</span>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{globalStats.total_sales.toLocaleString()} transacciones</div>
-            </div>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm">
+          <div className="flex justify-center mb-8">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm min-w-[300px]">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Comercios Activos</span>
               <div className="text-2xl font-bold text-gray-900 dark:text-white">{globalStats.tenant_count} clientes</div>
             </div>
