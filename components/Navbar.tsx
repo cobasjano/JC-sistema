@@ -70,7 +70,8 @@ export function Navbar() {
           { href: '/admin/products', label: 'Productos' },
           { href: '/admin/expenses', label: 'Gastos' },
           { href: '/admin/users', label: 'Usuarios' },
-          { href: '/admin/settings', label: 'Configuración' }
+          { href: '/admin/settings', label: 'Configuración' },
+          { href: '/admin/billing', label: 'Facturación' }
         ]
       : [
           { href: '/pos/catalog', label: 'Catálogo' },

@@ -31,9 +31,19 @@ export interface Tenant {
   id: string;
   name: string;
   slug: string;
+  is_active: boolean;
   settings: TenantSettings;
   created_at: string;
   updated_at: string;
+}
+
+export interface TenantBilling {
+  id: string;
+  tenant_id: string;
+  amount: number;
+  type: 'payment' | 'debt';
+  description?: string;
+  created_at: string;
 }
 
 export interface User {

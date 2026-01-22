@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { useAuthStore } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
-import { Tenant, User } from '@/lib/types';
+import { Tenant, User, TenantBilling } from '@/lib/types';
 import { authService } from '@/lib/services/auth';
 import { tenantService } from '@/lib/services/tenants';
 import { salesService } from '@/lib/services/sales';
+import { billingService } from '@/lib/services/billing';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
@@ -19,8 +20,12 @@ export default function SuperAdminDashboard() {
   const [showAddTenant, setShowAddTenant] = useState(false);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [managingUsersTenant, setManagingUsersTenant] = useState<Tenant | null>(null);
+  const [managingBillingTenant, setManagingBillingTenant] = useState<Tenant | null>(null);
   const [tenantUsers, setTenantUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [billingHistory, setBillingHistory] = useState<TenantBilling[]>([]);
+  const [tenantBalance, setTenantBalance] = useState(0);
+  const [loadingBilling, setLoadingBilling] = useState(false);
   
   // New/Edit Tenant Form
   const [tenantName, setTenantName] = useState('');
@@ -29,6 +34,11 @@ export default function SuperAdminDashboard() {
   const [adminPassword, setAdminPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Billing Form
+  const [billingAmount, setBillingAmount] = useState('');
+  const [billingType, setBillingType] = useState<'payment' | 'debt'>('payment');
+  const [billingDesc, setBillingDesc] = useState('');
 
   useEffect(() => {
     if (!user || user.role !== 'superadmin') {
@@ -149,6 +159,46 @@ export default function SuperAdminDashboard() {
     const data = await authService.getUsersByTenant(tenantId);
     setTenantUsers(data);
     setLoadingUsers(false);
+  };
+
+  const fetchTenantBilling = async (tenantId: string) => {
+    setLoadingBilling(true);
+    const history = await billingService.getBillingHistory(tenantId);
+    const balance = await billingService.getBalance(tenantId);
+    setBillingHistory(history);
+    setTenantBalance(balance);
+    setLoadingBilling(false);
+  };
+
+  const handleRegisterTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!managingBillingTenant) return;
+    setIsSubmitting(true);
+    
+    const success = await billingService.registerTransaction({
+      tenant_id: managingBillingTenant.id,
+      amount: parseFloat(billingAmount),
+      type: billingType,
+      description: billingDesc
+    });
+
+    if (success) {
+      setBillingAmount('');
+      setBillingDesc('');
+      fetchTenantBilling(managingBillingTenant.id);
+    } else {
+      alert('Error al registrar la transacción');
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleToggleStatus = async (tenantId: string, currentStatus: boolean) => {
+    const success = await tenantService.updateTenant(tenantId, { is_active: !currentStatus });
+    if (success) {
+      fetchTenants();
+    } else {
+      alert('Error al cambiar el estado del comercio');
+    }
   };
 
   const handleUpdateUser = async (userId: string, updates: any) => {
@@ -474,6 +524,16 @@ export default function SuperAdminDashboard() {
                     >
                       👥
                     </button>
+                    <button 
+                      onClick={() => {
+                        setManagingBillingTenant(tenant);
+                        fetchTenantBilling(tenant.id);
+                      }}
+                      className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors text-gray-400 hover:text-emerald-500"
+                      title="Facturación"
+                    >
+                      💰
+                    </button>
                   </div>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{tenant.name}</h3>
@@ -485,6 +545,23 @@ export default function SuperAdminDashboard() {
                     <span className="text-gray-400">{new Date(tenant.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
+
+                <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-50 dark:border-gray-700">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Estado</span>
+                    <span className={`text-xs font-bold ${tenant.is_active ? 'text-emerald-500' : 'text-red-500'}`}>
+                      {tenant.is_active ? '● Activo' : '● Bloqueado'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleToggleStatus(tenant.id, tenant.is_active)}
+                    className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition ${
+                      tenant.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                    }`}
+                  >
+                    {tenant.is_active ? 'Bloquear' : 'Desbloquear'}
+                  </button>
+                </div>
               </div>
             ))}
             {tenants.length === 0 && (
@@ -492,6 +569,95 @@ export default function SuperAdminDashboard() {
                 <p className="text-gray-400 font-medium italic">No hay comercios registrados aún.</p>
               </div>
             )}
+          </div>
+        )}
+
+        {managingBillingTenant && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-white/10">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight">Pagos y Deudas: {managingBillingTenant.name}</h2>
+                  <p className="text-sm text-gray-500">Balance actual: <span className={`font-bold ${tenantBalance > 0 ? 'text-red-500' : 'text-emerald-500'}`}>${tenantBalance.toLocaleString()}</span></p>
+                </div>
+                <button 
+                  onClick={() => setManagingBillingTenant(null)}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleRegisterTransaction} className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-8 p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700">
+                <div className="sm:col-span-2">
+                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">Monto</label>
+                  <input 
+                    type="number" 
+                    placeholder="0.00" 
+                    value={billingAmount}
+                    onChange={(e) => setBillingAmount(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                    required 
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">Tipo</label>
+                  <select 
+                    value={billingType}
+                    onChange={(e) => setBillingType(e.target.value as any)}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                  >
+                    <option value="payment">Pago</option>
+                    <option value="debt">Deuda</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <button 
+                    type="submit" 
+                    disabled={isSubmitting} 
+                    className="w-full bg-orange-500 text-white py-2 rounded-xl font-bold transition hover:bg-orange-600 disabled:opacity-50 shadow-lg shadow-orange-500/20"
+                  >
+                    {isSubmitting ? '...' : 'Registrar'}
+                  </button>
+                </div>
+                <div className="sm:col-span-4">
+                  <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">Descripción</label>
+                  <input 
+                    type="text" 
+                    placeholder="Ej: Pago mensualidad Enero" 
+                    value={billingDesc}
+                    onChange={(e) => setBillingDesc(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                  />
+                </div>
+              </form>
+
+              {loadingBilling ? (
+                <div className="flex justify-center py-10">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500 border-t-transparent"></div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Historial de Transacciones</h3>
+                  {billingHistory.map(tx => (
+                    <div key={tx.id} className="flex justify-between items-center p-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-sm">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{tx.description || (tx.type === 'payment' ? 'Pago registrado' : 'Deuda registrada')}</p>
+                        <p className="text-[10px] text-gray-400 font-medium">{new Date(tx.created_at).toLocaleString()}</p>
+                      </div>
+                      <div className={`font-bold text-lg ${tx.type === 'payment' ? 'text-emerald-500' : 'text-red-500'}`}>
+                        {tx.type === 'payment' ? '-' : '+'}${parseFloat(tx.amount.toString()).toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                  {billingHistory.length === 0 && (
+                    <div className="py-20 text-center bg-gray-50 dark:bg-gray-900 rounded-3xl border-2 border-dashed border-gray-100 dark:border-gray-700">
+                      <p className="text-gray-400 font-medium italic">No hay historial de facturación.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
