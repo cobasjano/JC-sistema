@@ -7,8 +7,7 @@ import { Cart } from '@/components/Cart';
 import { useAuthStore, useCartStore } from '@/lib/store';
 import { productService } from '@/lib/services/products';
 import { salesService } from '@/lib/services/sales';
-import { supabase } from '@/lib/supabase';
-import { Product, Sale } from '@/lib/types';
+import { Product } from '@/lib/types';
 
 
 
@@ -25,18 +24,7 @@ export default function CatalogPage() {
   const [subcategories, setSubcategories] = useState<string[]>([]);
   const [todayTotal, setTodayTotal] = useState(0);
   const [todayTotalCombined, setTodayTotalCombined] = useState(0);
-  const [productSalesCount, setProductSalesCount] = useState<Record<string, number>>({});
   const [showTotals, setShowTotals] = useState(true);
-
-  const getSalesCountByProduct = async () => {
-    try {
-      if (!user) return;
-      const counts = await salesService.getSalesCountByProduct(user.tenant_id, 200);
-      setProductSalesCount(counts);
-    } catch (error) {
-      console.error('Error getting sales count:', error);
-    }
-  };
 
   useEffect(() => {
     if (!user || user.role !== 'pos') {
@@ -51,7 +39,6 @@ export default function CatalogPage() {
       ]);
       setProducts(productsData);
       setCategories(categoriesData);
-      getSalesCountByProduct();
       setLoading(false);
     };
 
@@ -233,19 +220,21 @@ export default function CatalogPage() {
             <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-gray-100 scrollbar-track-transparent">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 pb-4">
                 {filteredProducts.map((product) => {
-                  const count = productSalesCount[product.id] || 0;
-                  let badgeColor = 'bg-blue-500';
-                  if (count > 0 && count <= 5) badgeColor = 'bg-amber-500';
-                  if (count > 5) badgeColor = 'bg-red-500';
+                  let badgeColor = 'bg-green-500';
+                  if (product.stock <= 0) badgeColor = 'bg-red-500';
+                  else if (product.stock < 5) badgeColor = 'bg-amber-500';
 
                   return (
                     <div
                       key={product.id}
                       className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all p-3 border border-gray-100 flex flex-col relative overflow-hidden"
                     >
-                      <div className="absolute top-2 right-2 z-10">
+                      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+                        <span className="text-[9px] font-bold bg-green-50 text-green-600 px-1.5 py-0.5 rounded-full uppercase tracking-wider border border-green-100">
+                          Stock
+                        </span>
                         <div className={`${badgeColor} text-white rounded-full min-w-[24px] h-[24px] px-1.5 flex items-center justify-center text-[10px] font-bold shadow-lg border-2 border-white`}>
-                          {count}
+                          {product.stock}
                         </div>
                       </div>
                       {product.image_url && (
@@ -263,12 +252,6 @@ export default function CatalogPage() {
                       )}
                       <div className="flex justify-between items-start h-8 mb-2">
                         <h3 className="font-bold text-[11px] text-gray-900 line-clamp-2 uppercase tracking-tight leading-tight" style={{ textRendering: 'optimizeLegibility', WebkitFontSmoothing: 'antialiased' }}>{product.name}</h3>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1 whitespace-nowrap ${
-                          product.stock <= 0 ? 'bg-red-100 text-red-600' : 
-                          product.stock < 5 ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'
-                        }`}>
-                          Stock: {product.stock}
-                        </span>
                       </div>
                       
                       <div className="flex flex-wrap gap-1 mb-3 flex-grow">

@@ -14,14 +14,15 @@ test.describe('Stock Management System', () => {
     // Esperar a que los productos carguen
     await page.waitForSelector('.group.bg-white.rounded-2xl', { timeout: 15000 });
 
-    // Verificar que al menos un producto tenga la etiqueta de "Stock:"
-    const stockBadge = page.locator('span:has-text("Stock:")').first();
-    await expect(stockBadge).toBeVisible();
+    // Verificar que al menos un producto tenga la etiqueta de "Stock"
+    const stockLabel = page.locator('span:has-text("Stock")').first();
+    await expect(stockLabel).toBeVisible();
 
-    // Verificar clases de colores (ej. bg-red-100 para stock 0 o bg-green-100 para stock alto)
-    // Esto depende de los datos reales, pero al menos validamos la existencia del texto
-    const badgeText = await stockBadge.innerText();
-    expect(badgeText).toMatch(/Stock: -?\d+/);
+    // Verificar que el círculo de stock contenga un número
+    const productCard = page.locator('.group.bg-white.rounded-2xl').first();
+    const stockCircle = productCard.locator('div.absolute.top-2.right-2 div');
+    const stockText = await stockCircle.innerText();
+    expect(stockText).toMatch(/^\d+$/);
   });
 
   test('Checkout warns about insufficient stock when confirm dialog appears', async ({ page }) => {
