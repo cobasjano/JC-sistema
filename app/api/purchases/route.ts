@@ -71,7 +71,20 @@ export async function POST(request: NextRequest) {
     });
 
     if (stockError) {
-      console.error('Error al incrementar stock:', stockError);
+      console.warn('RPC increment_product_stock falló, usando fallback manual:', stockError.message);
+      
+      const { data: product } = await supabaseAdmin
+        .from('products')
+        .select('stock')
+        .eq('id', productId)
+        .single();
+
+      if (product) {
+        await supabaseAdmin
+          .from('products')
+          .update({ stock: (product.stock || 0) + quantity })
+          .eq('id', productId);
+      }
     }
 
     return NextResponse.json(purchase, { status: 201 });

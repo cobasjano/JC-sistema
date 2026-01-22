@@ -118,16 +118,29 @@ export async function POST(request: NextRequest) {
     // Decrementar stock si la configuración lo permite
     if (decrementStock) {
       for (const item of items) {
-        // Usamos una query para restar la cantidad vendida del stock actual
+        // Intentar usar el RPC para una actualización atómica
         const { error: stockError } = await supabaseAdmin.rpc('decrement_product_stock', {
           p_product_id: item.product_id,
           p_quantity: item.quantity
         });
 
+        // Si el RPC falla (por ejemplo, porque la función no existe en la DB), usar fallback manual
         if (stockError) {
-          console.error(`Error al decrementar stock para ${item.product_id}:`, stockError);
-          // Opcional: podrías decidir si fallar la venta completa o solo loguear el error
-          // Por ahora solo logueamos para no interrumpir la venta si ya se registró
+          console.warn(`RPC decrement_product_stock falló, usando fallback manual para ${item.product_id}:`, stockError.message);
+          
+          // Fallback: Obtener stock actual y actualizar (menos seguro pero funciona sin RPC)
+          const { data: product } = await supabaseAdmin
+            .from('products')
+            .select('stock')
+            .eq('id', item.product_id)
+            .single();
+
+          if (product) {
+            await supabaseAdmin
+              .from('products')
+              .update({ stock: (product.stock || 0) - item.quantity })
+              .eq('id', item.product_id);
+          }
         }
       }
     }

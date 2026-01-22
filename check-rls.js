@@ -17,9 +17,18 @@ const supabaseKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function checkData() {
-  const { data: users } = await supabase.from('users').select('id, email, role, tenant_id');
-  console.log('Users:', users);
+async function checkRLS() {
+  const { data, error } = await supabase
+    .from('products')
+    .update({ name: 'Test' })
+    .eq('id', 'cdcb6fcd-ab41-4ebe-b186-d89674d80270')
+    .select();
+  
+  if (error) {
+    console.log('Update failed (RLS likely on):', error.message);
+  } else {
+    console.log('Update successful (RLS likely off or allowed):', data);
+  }
 }
 
-checkData();
+checkRLS();

@@ -17,9 +17,14 @@ const supabaseKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function checkData() {
-  const { data: users } = await supabase.from('users').select('id, email, role, tenant_id');
-  console.log('Users:', users);
+async function fixName() {
+  const { error } = await supabase
+    .from('products')
+    .update({ name: '1' })
+    .eq('id', 'cdcb6fcd-ab41-4ebe-b186-d89674d80270');
+  
+  if (error) console.error(error);
+  else console.log('Successfully renamed product to 1');
 }
 
-checkData();
+fixName();

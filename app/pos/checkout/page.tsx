@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { useAuthStore, useCartStore, useOfflineStore } from '@/lib/store';
-import { productService } from '@/lib/services/products';
 import { customerService } from '@/lib/services/customers';
-import { Product, SaleItem, PaymentMethod, PaymentBreakdown, Customer } from '@/lib/types';
+import { SaleItem, PaymentMethod, PaymentBreakdown, Customer } from '@/lib/types';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -34,11 +33,11 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (items.length === 0) {
+    if (items.length === 0 && !processing) {
       router.push('/pos/catalog');
       return;
     }
-  }, [user, router, items]);
+  }, [user, router, items, processing]);
 
   useEffect(() => {
     if (user && customerSearch.length >= 2) {
@@ -123,7 +122,8 @@ export default function CheckoutPage() {
           total,
           paymentMethod,
           paymentBreakdown,
-          customerId: selectedCustomer?.id
+          customerId: selectedCustomer?.id,
+          tenant_id: user.tenant_id
         }),
       });
 
