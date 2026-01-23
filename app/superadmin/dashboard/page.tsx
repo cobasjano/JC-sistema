@@ -26,6 +26,7 @@ export default function SuperAdminDashboard() {
   const [billingHistory, setBillingHistory] = useState<TenantBilling[]>([]);
   const [tenantBalance, setTenantBalance] = useState(0);
   const [loadingBilling, setLoadingBilling] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
   
   // New/Edit Tenant Form
   const [tenantName, setTenantName] = useState('');
@@ -41,6 +42,12 @@ export default function SuperAdminDashboard() {
   const [billingDesc, setBillingDesc] = useState('');
 
   useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+
     if (!user || user.role !== 'superadmin') {
       router.push('/');
       return;
@@ -48,7 +55,8 @@ export default function SuperAdminDashboard() {
 
     fetchTenants();
     fetchGlobalStats();
-  }, [user, router]);
+    billingService.checkOverdueDebts();
+  }, [isHydrated, user, router]);
 
   const fetchGlobalStats = async () => {
     const stats = await salesService.getGlobalStats();
@@ -644,6 +652,16 @@ export default function SuperAdminDashboard() {
                       <div>
                         <p className="text-sm font-bold text-gray-900 dark:text-white">{tx.description || (tx.type === 'payment' ? 'Pago registrado' : 'Deuda registrada')}</p>
                         <p className="text-[10px] text-gray-400 font-medium">{new Date(tx.created_at).toLocaleString()}</p>
+                        {tx.receipt_url && (
+                          <a 
+                            href={tx.receipt_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-500 uppercase tracking-widest mt-1 hover:underline"
+                          >
+                            <span>📄</span> Ver Comprobante
+                          </a>
+                        )}
                       </div>
                       <div className={`font-bold text-lg ${tx.type === 'payment' ? 'text-emerald-500' : 'text-red-500'}`}>
                         {tx.type === 'payment' ? '-' : '+'}${parseFloat(tx.amount.toString()).toLocaleString()}

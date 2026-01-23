@@ -33,6 +33,7 @@ export interface Tenant {
   slug: string;
   is_active: boolean;
   settings: TenantSettings;
+  paid_until?: string;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +44,7 @@ export interface TenantBilling {
   amount: number;
   type: 'payment' | 'debt';
   description?: string;
+  receipt_url?: string;
   created_at: string;
 }
 

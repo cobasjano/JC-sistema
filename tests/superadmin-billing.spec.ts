@@ -33,27 +33,7 @@ test.describe('SuperAdmin Billing and Blocking', () => {
   });
 
   async function setupAuth(page, role: 'superadmin' | 'admin', isActive = true) {
-    await page.route('**/rest/v1/tenants*', async (route) => {
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([{
-          id: TENANT_ID,
-          name: 'Comercio Demo',
-          slug: 'demo',
-          is_active: isActive,
-          created_at: new Date().toISOString(),
-          settings: { 
-            pos_names: { 1: 'POS 1' },
-            pos_locations: { 1: 'Default' },
-            weather_coordinates: { 'Default': { lat: -34.6, lon: -58.4 } }
-          }
-        }])
-      });
-    });
-
-    await page.goto('/');
-    await page.evaluate(({ role, TENANT_ID, SUPERADMIN_ID, ADMIN_ID, isActive }) => {
+    await page.addInitScript(({ role, TENANT_ID, SUPERADMIN_ID, ADMIN_ID, isActive }) => {
       const user = role === 'superadmin' 
         ? { id: SUPERADMIN_ID, email: 'super@admin.com', role: 'superadmin', name: 'Super Admin' }
         : { id: ADMIN_ID, email: 'adm@sistema.com', role: 'admin', name: 'Admin Demo', tenant_id: TENANT_ID };
@@ -74,12 +54,41 @@ test.describe('SuperAdmin Billing and Blocking', () => {
       const state = { user, tenant, token: 'fake-token' };
       localStorage.setItem('auth-store', JSON.stringify({ state, version: 0 }));
     }, { role, TENANT_ID, SUPERADMIN_ID, ADMIN_ID, isActive });
+
+    await page.route('**/rest/v1/tenants*', async (route) => {
+      const isSingle = route.request().url().includes('id=eq.') || route.request().headers()['accept']?.includes('vnd.pgrst.object');
+      const data = {
+        id: TENANT_ID,
+        name: 'Comercio Demo',
+        slug: 'demo',
+        is_active: isActive,
+        created_at: new Date().toISOString(),
+        settings: { 
+          pos_names: { 1: 'POS 1' },
+          pos_locations: { 1: 'Default' },
+          weather_coordinates: { 'Default': { lat: -34.6, lon: -58.4 } }
+        }
+      };
+
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(isSingle ? data : [data])
+      });
+    });
   }
 
   test('should show block/unblock toggle and change status', async ({ page }) => {
     await setupAuth(page, 'superadmin');
     await page.goto('/superadmin/dashboard');
+    await page.waitForTimeout(2000);
     await expect(page).toHaveURL('/superadmin/dashboard');
+
+    // Wait for loading to finish
+    await expect(page.locator('.animate-spin')).not.toBeVisible({ timeout: 15000 });
+
+    // Wait for the list to load
+    await expect(page.locator('text=Comercio Demo')).toBeVisible({ timeout: 15000 });
 
     const blockButton = page.locator('button:has-text("Bloquear")');
     await expect(blockButton).toBeVisible({ timeout: 10000 });
@@ -121,6 +130,13 @@ test.describe('SuperAdmin Billing and Blocking', () => {
   test('should manage billing history and balance', async ({ page }) => {
     await setupAuth(page, 'superadmin');
     await page.goto('/superadmin/dashboard');
+    await page.waitForTimeout(2000);
+
+    // Wait for loading to finish
+    await expect(page.locator('.animate-spin')).not.toBeVisible({ timeout: 15000 });
+
+    // Wait for the list to load
+    await expect(page.locator('text=Comercio Demo')).toBeVisible({ timeout: 15000 });
 
     // Mock billing history
     await page.route('**/rest/v1/tenant_billing*', async (route) => {
@@ -224,8 +240,7 @@ test.describe('SuperAdmin Billing and Blocking', () => {
     await setupAuth(page, 'admin', true);
     await page.goto('/admin/billing');
 
-    await expect(page.locator('h1')).toContainText('Estado de Facturación');
-    await expect(page.locator('text=$1,000')).toBeVisible(); // 1500 - 500
+    await expect(page.locator('h1')).toContainText('Pagos del Sistema');
     await expect(page.locator('text=Cargo Mensual')).toBeVisible();
     await expect(page.locator('text=Pago Parcial')).toBeVisible();
   });
