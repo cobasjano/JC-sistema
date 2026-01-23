@@ -27,6 +27,7 @@ export default function SuperAdminDashboard() {
   const [tenantBalance, setTenantBalance] = useState(0);
   const [loadingBilling, setLoadingBilling] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [uploadingReceipt, setUploadingReceipt] = useState<string | null>(null);
   
   // New/Edit Tenant Form
   const [tenantName, setTenantName] = useState('');
@@ -188,16 +189,29 @@ export default function SuperAdminDashboard() {
       amount: parseFloat(billingAmount),
       type: billingType,
       description: billingDesc
-    });
+    }, billingType === 'payment' ? 30 : 0);
 
     if (success) {
       setBillingAmount('');
       setBillingDesc('');
       fetchTenantBilling(managingBillingTenant.id);
+      fetchTenants(); // Refresh to see updated paid_until if needed
     } else {
       alert('Error al registrar la transacción');
     }
     setIsSubmitting(false);
+  };
+
+  const handleFileUpload = async (txId: string, file: File) => {
+    if (!managingBillingTenant) return;
+    setUploadingReceipt(txId);
+    const url = await billingService.uploadReceipt(managingBillingTenant.id, txId, file);
+    if (url) {
+      fetchTenantBilling(managingBillingTenant.id);
+    } else {
+      alert('Error al subir el comprobante');
+    }
+    setUploadingReceipt(null);
   };
 
   const handleToggleStatus = async (tenantId: string, currentStatus: boolean) => {
@@ -612,7 +626,7 @@ export default function SuperAdminDashboard() {
                   <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-widest">Tipo</label>
                   <select 
                     value={billingType}
-                    onChange={(e) => setBillingType(e.target.value as any)}
+                    onChange={(e) => setBillingType(e.target.value as 'payment' | 'debt')}
                     className="w-full px-4 py-2 rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-orange-500 outline-none transition-all"
                   >
                     <option value="payment">Pago</option>
@@ -663,8 +677,27 @@ export default function SuperAdminDashboard() {
                           </a>
                         )}
                       </div>
-                      <div className={`font-bold text-lg ${tx.type === 'payment' ? 'text-emerald-500' : 'text-red-500'}`}>
-                        {tx.type === 'payment' ? '-' : '+'}${parseFloat(tx.amount.toString()).toLocaleString()}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className={`font-bold text-lg ${tx.type === 'payment' ? 'text-emerald-500' : 'text-red-500'}`}>
+                          {tx.type === 'payment' ? '-' : '+'}${parseFloat(tx.amount.toString()).toLocaleString()}
+                        </div>
+                        
+                        {!tx.receipt_url && tx.type === 'payment' && (
+                          <label className="cursor-pointer">
+                            <input 
+                              type="file" 
+                              className="hidden" 
+                              accept="image/*,application/pdf"
+                              onChange={(e) => {
+                                if (e.target.files?.[0]) handleFileUpload(tx.id, e.target.files[0]);
+                              }}
+                              disabled={uploadingReceipt === tx.id}
+                            />
+                            <span className={`text-[10px] font-bold px-3 py-1 rounded-full border border-orange-500 text-orange-500 hover:bg-orange-50 transition-colors ${uploadingReceipt === tx.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                              {uploadingReceipt === tx.id ? 'Subiendo...' : 'Subir Comprobante'}
+                            </span>
+                          </label>
+                        )}
                       </div>
                     </div>
                   ))}

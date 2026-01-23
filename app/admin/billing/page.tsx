@@ -9,24 +9,15 @@ import { TenantBilling } from '@/lib/types';
 
 export default function AdminBillingPage() {
   const router = useRouter();
-  const { user, tenant, setTenant } = useAuthStore();
+  const { user, tenant } = useAuthStore();
   const [history, setHistory] = useState<TenantBilling[]>([]);
-  const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadingReceipt, setUploadingReceipt] = useState<string | null>(null);
 
   const fetchBilling = useCallback(async () => {
     setLoading(true);
     if (tenant?.id) {
-      const [billingHistory, currentBalance] = await Promise.all([
-        billingService.getBillingHistory(tenant.id),
-        billingService.getBalance(tenant.id)
-      ]);
+      const billingHistory = await billingService.getBillingHistory(tenant.id);
       setHistory(billingHistory);
-      setBalance(currentBalance);
     }
     setLoading(false);
   }, [tenant?.id]);
@@ -42,58 +33,28 @@ export default function AdminBillingPage() {
     }
   }, [user, tenant?.id, router, fetchBilling]);
 
-  const handleRegisterPayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tenant || !amount) return;
-    
-    setIsSubmitting(true);
-    const success = await billingService.registerTransaction({
-      tenant_id: tenant.id,
-      amount: parseFloat(amount),
-      type: 'payment',
-      description: description || 'Pago de sistema'
-    }, 30); // Default 30 days as requested "pagas por 30 dias"
-
-    if (success) {
-      setAmount('');
-      setDescription('');
-      fetchBilling();
-      // Optionally update local tenant state for paid_until if we want immediate feedback
-    } else {
-      alert('Error al registrar el pago');
-    }
-    setIsSubmitting(false);
-  };
-
-  const handleFileUpload = async (txId: string, file: File) => {
-    if (!tenant) return;
-    setUploadingReceipt(txId);
-    const url = await billingService.uploadReceipt(tenant.id, txId, file);
-    if (url) {
-      fetchBilling();
-    } else {
-      alert('Error al subir el comprobante');
-    }
-    setUploadingReceipt(null);
-  };
-
   if (!user || user.role !== 'admin') return null;
 
   const daysRemaining = tenant?.paid_until 
     ? Math.max(0, Math.ceil((new Date(tenant.paid_until).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
     : 0;
 
+  const handleContactSupport = () => {
+    const message = encodeURIComponent(`Hola, soy del comercio ${tenant?.name}. Quisiera informar un pago o realizar una consulta sobre mi cuenta.`);
+    window.open(`https://wa.me/5491100000000?text=${message}`, '_blank'); // Reemplazar con el número real de soporte
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navbar />
       <div className="max-w-6xl mx-auto p-6 lg:p-10">
         <div className="mb-10 text-center sm:text-left">
-          <h1 className="text-4xl font-extralight text-slate-900 dark:text-white tracking-tight">Pagos del Sistema</h1>
-          <p className="text-slate-500 mt-2 uppercase tracking-widest text-xs font-bold opacity-60">Gestión de suscripción y comprobantes</p>
+          <h1 className="text-4xl font-extralight text-slate-900 dark:text-white tracking-tight">Estado de Cuenta</h1>
+          <p className="text-slate-500 mt-2 uppercase tracking-widest text-xs font-bold opacity-60">Historial de pagos y soporte técnico</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column: Stats & Register */}
+          {/* Left Column: Stats & Support */}
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-gray-700">
               <span className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest block">Días Disponibles</span>
@@ -108,37 +69,19 @@ export default function AdminBillingPage() {
             </div>
 
             <div className="bg-white dark:bg-gray-800 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-gray-700">
-              <h2 className="text-lg font-bold mb-6">Registrar Nuevo Pago</h2>
-              <form onSubmit={handleRegisterPayment} className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Monto a Pagar</label>
-                  <input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="w-full px-5 py-3 rounded-2xl border border-slate-100 dark:border-gray-700 bg-slate-50 dark:bg-gray-900 focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                    placeholder="0.00"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Descripción (Opcional)</label>
-                  <input
-                    type="text"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-5 py-3 rounded-2xl border border-slate-100 dark:border-gray-700 bg-slate-50 dark:bg-gray-900 focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                    placeholder="Ej: Pago Mes de Marzo"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-orange-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-orange-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Registrando...' : 'Informar Pago (+30 días)'}
-                </button>
-              </form>
+              <h2 className="text-lg font-bold mb-4">Soporte y Pagos</h2>
+              <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+                Para registrar un nuevo pago o si tienes dudas sobre tu balance, por favor contacta a nuestro equipo de soporte por WhatsApp.
+              </p>
+              <button
+                onClick={handleContactSupport}
+                className="w-full bg-emerald-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              >
+                <span>📱</span> Contactar por WhatsApp
+              </button>
+              <p className="text-[10px] text-center text-slate-400 mt-4 uppercase tracking-widest font-bold">
+                Horario: Lunes a Viernes 9hs a 18hs
+              </p>
             </div>
           </div>
 
@@ -187,23 +130,6 @@ export default function AdminBillingPage() {
                           <div className={`font-black text-xl ${tx.type === 'payment' ? 'text-emerald-500' : 'text-red-500'}`}>
                             {tx.type === 'payment' ? '-' : '+'}${parseFloat(tx.amount.toString()).toLocaleString()}
                           </div>
-                          
-                          {!tx.receipt_url && tx.type === 'payment' && (
-                            <label className="cursor-pointer">
-                              <input 
-                                type="file" 
-                                className="hidden" 
-                                accept="image/*,application/pdf"
-                                onChange={(e) => {
-                                  if (e.target.files?.[0]) handleFileUpload(tx.id, e.target.files[0]);
-                                }}
-                                disabled={uploadingReceipt === tx.id}
-                              />
-                              <span className={`text-[10px] font-bold px-3 py-1 rounded-full border border-orange-500 text-orange-500 hover:bg-orange-50 transition-colors ${uploadingReceipt === tx.id ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                {uploadingReceipt === tx.id ? 'Subiendo...' : 'Subir Comprobante'}
-                              </span>
-                            </label>
-                          )}
                         </div>
                       </div>
                     ))}

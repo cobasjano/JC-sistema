@@ -222,7 +222,7 @@ test.describe('SuperAdmin Billing and Blocking', () => {
     await expect(page).toHaveURL('/');
   });
 
-  test('admin should be able to see their own billing page', async ({ page }) => {
+  test('admin should be able to see their own billing page and contact support', async ({ page }) => {
     // Mock billing history for admin
     await page.route('**/rest/v1/tenant_billing*', async (route) => {
       if (route.request().method() === 'GET') {
@@ -240,8 +240,9 @@ test.describe('SuperAdmin Billing and Blocking', () => {
     await setupAuth(page, 'admin', true);
     await page.goto('/admin/billing');
 
-    await expect(page.locator('h1')).toContainText('Pagos del Sistema');
+    await expect(page.locator('h1')).toContainText('Estado de Cuenta');
     await expect(page.locator('text=Cargo Mensual')).toBeVisible();
     await expect(page.locator('text=Pago Parcial')).toBeVisible();
+    await expect(page.locator('text=Contactar por WhatsApp')).toBeVisible();
   });
 });
